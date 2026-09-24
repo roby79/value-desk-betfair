@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Value Desk - Tennis Betting Analysis</title>
+    <title>Value Desk - Elo & Value Betting Analysis</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
@@ -16,23 +16,23 @@
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span class="text-xs text-slate-400 font-mono">LIVE SYSTEM</span>
+            <span class="text-xs text-slate-400 font-mono">ELO ENGINE</span>
         </div>
     </header>
 
     <!-- Main Container -->
     <main class="flex-1 max-w-4xl w-full mx-auto p-4 space-y-6">
         
-        <!-- Barra di Ricerca Veloce -->
+        <!-- Barra di Ricerca -->
         <div class="relative">
             <input type="text" id="search-input" placeholder="Cerca tennista o torneo..." 
                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
         </div>
 
-        <!-- Sezione Occasioni (Value Bets) -->
+        <!-- Sezione Occasioni (Confronto Elo vs Quote) -->
         <section class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4 shadow-xl">
             <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni di Valore</h2>
+                <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni di Valore (Elo vs Quota)</h2>
                 <span id="opp-count" class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">0 opportunità</span>
             </div>
             <div id="opportunities-container" class="space-y-3">
@@ -40,10 +40,10 @@
             </div>
         </section>
 
-        <!-- Sezione Palinsesto -->
+        <!-- Sezione Palinsesto Giornaliero -->
         <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl">
             <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Tutte le Partite</h2>
+                <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Palinsesto Odierno (Match da disputare)</h2>
                 <span id="match-count" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">0 match</span>
             </div>
             <div id="matches-container" class="space-y-3">
@@ -55,43 +55,87 @@
 
     <!-- Footer -->
     <footer class="border-t border-slate-900 text-center py-4 text-xs text-slate-600 font-mono">
-        Value Desk Engine v1.0 — Client-Side Architecture
+        Value Desk & Elo Analysis Engine — Client-Side
     </footer>
 
-    <!-- Logica JavaScript Completa -->
+    <!-- Logica Calcolo Elo & Value -->
     <script>
+        // Dataset con Elo Ratings dei tennisti e quote dei bookmaker
         const matchesData = [
             {
                 tournament: "ATP US Open",
                 time: "17:30",
                 player1: "J. Sinner",
+                elo1: 2150,
                 player2: "C. Alcaraz",
+                elo2: 2120,
                 odds1: 1.85,
-                odds2: 2.05,
-                valueOn: "Player 2",
-                valuePercentage: "+4.2%"
+                odds2: 2.05
             },
             {
                 tournament: "WTA Beijing",
                 time: "19:00",
                 player1: "I. Swiatek",
+                elo1: 2080,
                 player2: "A. Sabalenka",
+                elo2: 2010,
                 odds1: 1.55,
-                odds2: 2.45,
-                valueOn: null,
-                valuePercentage: null
+                odds2: 2.45
             },
             {
                 tournament: "ATP Challenger Roma",
                 time: "21:15",
                 player1: "F. Cobolli",
+                elo1: 1850,
                 player2: "L. Nardi",
+                elo2: 1810,
                 odds1: 1.70,
-                odds2: 2.15,
-                valueOn: "Player 1",
-                valuePercentage: "+6.8%"
+                odds2: 2.15
             }
         ];
+
+        // Funzione per calcolare la probabilità Elo (formula standard)
+        function calculateEloProbability(eloA, eloB) {
+            return 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
+        }
+
+        function processMatches() {
+            return matchesData.map(match => {
+                // Probabilità Elo in percentuale
+                const prob1 = calculateEloProbability(match.elo1, match.elo2);
+                const prob2 = 1 - prob1;
+
+                // Probabilità implicita delle quote (rimuovendo circa il margine o usando 1/quota)
+                const implied1 = 1 / match.odds1;
+                const implied2 = 1 / match.odds2;
+
+                // Differenziale di valore (EloProb - ImpliedProb)
+                const diff1 = prob1 - implied1;
+                const diff2 = prob2 - implied2;
+
+                let valueOn = null;
+                let valuePercentage = 0;
+
+                // Soglia minima di vantaggio per considerare la value bet (es. +2.5%)
+                const threshold = 0.025; 
+
+                if (diff1 > threshold) {
+                    valueOn = match.player1;
+                    valuePercentage = (diff1 * 100).toFixed(1);
+                } else if (diff2 > threshold) {
+                    valueOn = match.player2;
+                    valuePercentage = (diff2 * 100).toFixed(1);
+                }
+
+                return {
+                    ...match,
+                    prob1: (prob1 * 100).toFixed(1),
+                    prob2: (prob2 * 100).toFixed(1),
+                    valueOn,
+                    valuePercentage: valuePercentage > 0 ? `+${valuePercentage}%` : null
+                };
+            });
+        }
 
         function renderApp(filterText = "") {
             const matchesContainer = document.getElementById('matches-container');
@@ -102,8 +146,10 @@
             matchesContainer.innerHTML = '';
             oppContainer.innerHTML = '';
 
+            const processed = processMatches();
             const query = filterText.toLowerCase();
-            const filteredData = matchesData.filter(m => 
+
+            const filteredData = processed.filter(m => 
                 m.player1.toLowerCase().includes(query) || 
                 m.player2.toLowerCase().includes(query) || 
                 m.tournament.toLowerCase().includes(query)
@@ -111,30 +157,29 @@
 
             matchCount.textContent = `${filteredData.length} match`;
 
-            // Filtra le occasioni tra i dati filtrati
             const opportunities = filteredData.filter(m => m.valueOn !== null);
             oppCount.textContent = `${opportunities.length} opportunità`;
 
-            // Render Occasioni
+            // Render Occasioni di Valore
             if (opportunities.length === 0) {
-                oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna occasione attiva per la ricerca corrente.</div>';
+                oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna occasione di valore basata su Elo al momento.</div>';
             } else {
                 opportunities.forEach(match => {
                     const card = document.createElement('div');
-                    card.className = "bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3 hover:border-emerald-500/70 transition";
+                    card.className = "bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3.5 hover:border-emerald-500/70 transition";
                     card.innerHTML = `
                         <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
                             <span class="font-medium text-emerald-400">${match.tournament}</span>
-                            <span class="font-mono bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded font-bold">${match.valuePercentage} Value</span>
+                            <span class="font-mono bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded font-bold">${match.valuePercentage} Edge (Elo)</span>
                         </div>
-                        <div class="flex justify-between items-center text-sm font-medium">
-                            <div class="space-y-1">
-                                <div>${match.player1} vs ${match.player2}</div>
-                                <div class="text-xs text-slate-400">Puntare su: <strong class="text-emerald-300">${match.valueOn === 'Player 1' ? match.player1 : match.player2}</strong></div>
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm">
+                            <div>
+                                <div class="font-medium text-white">${match.player1} vs ${match.player2}</div>
+                                <div class="text-xs text-slate-400 mt-0.5">Consiglio: <strong class="text-emerald-300">Puntare su ${match.valueOn}</strong></div>
                             </div>
-                            <div class="flex gap-2 text-xs font-mono">
-                                <span class="bg-slate-900 border border-slate-700 px-2 py-1 rounded text-slate-300">1: ${match.odds1}</span>
-                                <span class="bg-slate-900 border border-slate-700 px-2 py-1 rounded text-slate-300">2: ${match.odds2}</span>
+                            <div class="flex gap-3 text-xs font-mono bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                                <div>${match.player1}: <span class="text-emerald-400">${match.odds1}</span> <span class="text-slate-500">(${match.prob1}%)</span></div>
+                                <div>${match.player2}: <span class="text-emerald-400">${match.odds2}</span> <span class="text-slate-500">(${match.prob2}%)</span></div>
                             </div>
                         </div>
                     `;
@@ -142,7 +187,7 @@
                 });
             }
 
-            // Render Palinsesto
+            // Render Palinsesto Completo
             if (filteredData.length === 0) {
                 matchesContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna partita trovata.</div>';
                 return;
@@ -150,16 +195,15 @@
 
             filteredData.forEach(match => {
                 const card = document.createElement('div');
-                card.className = "bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 hover:border-slate-600 transition";
+                card.className = "bg-slate-800/40 border border-slate-700/50 rounded-xl p-3.5 hover:border-slate-600 transition";
                 card.innerHTML = `
                     <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
                         <span class="font-medium text-slate-300">${match.tournament}</span>
-                        <span class="font-mono bg-slate-800 px-2 py-0.5 rounded">${match.time} CET</span>
+                        <span class="font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-300">${match.time} CET</span>
                     </div>
-                    <div class="flex justify-between items-center text-sm font-medium">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm">
                         <div class="space-y-1">
-                            <div>${match.player1}</div>
-                            <div class="text-slate-400">${match.player2}</div>
+                            <div><strong class="text-white">${match.player1}</strong> <span class="text-slate-500 text-xs">(${match.prob1}%)</span> vs <strong class="text-white">${match.player2}</strong> <span class="text-slate-500 text-xs">(${match.prob2}%)</span></div>
                         </div>
                         <div class="flex gap-2 text-xs font-mono">
                             <span class="bg-slate-900 border border-slate-700 px-2 py-1 rounded text-slate-300">1: <strong>${match.odds1}</strong></span>
