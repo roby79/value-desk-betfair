@@ -12,7 +12,7 @@
     <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-2">
             <h1 class="text-lg font-black tracking-wider text-emerald-400">VALUE DESK</h1>
-            <span class="text-xs text-slate-400 font-mono">| Betfair 5% Comm</span>
+            <span class="text-xs text-slate-400 font-mono">| Betfair Net Value (5% Comm)</span>
         </div>
         <div class="flex gap-2">
             <button onclick="switchTab('palinsesto')" id="btn-palinsesto" class="px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition">Palinsesto</button>
@@ -33,7 +33,7 @@
 
             <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl">
                 <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Palinsesto Odierno (Favorite 1.50 - 3.00)</h2>
+                    <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Palinsesto & Analisi Elo (Netto Comm. Betfair 5%)</h2>
                     <span id="match-count" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">0 match</span>
                 </div>
                 <div id="matches-container" class="space-y-4">
@@ -42,11 +42,11 @@
             </section>
         </div>
 
-        <!-- TAB 2: OCCASIONI (Filtro Separato con Orario) -->
+        <!-- TAB 2: OCCASIONI -->
         <div id="tab-occasioni" class="space-y-6 hidden">
             <section class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4 shadow-xl">
                 <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni di Valore (Edge &gt; 3%)</h2>
+                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni di Valore Netto (&gt; 3%)</h2>
                     <span id="opp-count" class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">0 opportunità</span>
                 </div>
                 <div id="opportunities-container" class="space-y-4">
@@ -145,13 +145,13 @@
                 tournament: "ATP Masters Shanghai",
                 time: "14:00 CET",
                 player1: "J. Menesch",
-                odds1: 1.75,
-                form1: ["V", "V", "S", "V", "V"],
-                elo1: 1950,
+                odds1: 2.20,
+                form1: ["V", "V", "V", "V", "S"],
+                elo1: 1980,
                 player2: "T. Etcheverry",
-                odds2: 2.10,
-                form2: ["S", "S", "V", "S", "V"],
-                elo2: 1820
+                odds2: 1.65,
+                form2: ["V", "S", "S", "V", "S"],
+                elo2: 1810
             },
             {
                 id: 102,
@@ -171,13 +171,13 @@
                 tournament: "ATP Challenger Valencia",
                 time: "18:00 CET",
                 player1: "D. Goffin",
-                odds1: 2.40,
-                form1: ["S", "V", "S", "V", "S"],
-                elo1: 1780,
+                odds1: 2.50,
+                form1: ["V", "V", "V", "S", "V"],
+                elo1: 1890,
                 player2: "H. Mayot",
-                odds2: 1.60,
-                form2: ["V", "V", "V", "V", "S"],
-                elo2: 1840
+                odds2: 1.55,
+                form2: ["S", "V", "S", "S", "V"],
+                elo2: 1800
             }
         ];
 
@@ -198,30 +198,42 @@
             return 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
         }
 
+        // Funzione per calcolare la quota netta Betfair (scontando il 5% sull'utile)
+        function getNetOdds(odds) {
+            const netProfit = (odds - 1) * 0.95;
+            return 1 + netProfit;
+        }
+
         function processMatches() {
             return matchesData.map(match => {
                 const probElo1 = calculateEloProbability(match.elo1, match.elo2);
                 const probElo2 = 1 - probElo1;
 
-                const probBook1 = 1 / match.odds1;
-                const probBook2 = 1 / match.odds2;
+                // Calcolo della probabilità implicita basata sulla quota NETTA di Betfair (commissione 5% inclusa)
+                const netOdds1 = getNetOdds(match.odds1);
+                const netOdds2 = getNetOdds(match.odds2);
 
-                const diff1 = probElo1 - probBook1;
-                const diff2 = probElo2 - probBook2;
+                const probNetBook1 = 1 / netOdds1;
+                const probNetBook2 = 1 / netOdds2;
 
-                let valueOn = null;
+                // Margine di valore calcolato al netto delle commissioni
+                const diff1 = probElo1 - probNetBook1;
+                const diff2 = probElo2 - probNetBook2;
+
+                const threshold = 0.03; // 3% di edge netto minimo
+                
+                let bestValuePlayer = null;
                 let edgeValue = 0;
                 let recommendedSide = "";
                 let recommendedOdds = 0;
 
-                const threshold = 0.03;
                 if (diff1 > threshold) {
-                    valueOn = match.player1;
+                    bestValuePlayer = match.player1;
                     edgeValue = (diff1 * 100).toFixed(1);
                     recommendedSide = `Punta ${match.player1}`;
                     recommendedOdds = match.odds1;
                 } else if (diff2 > threshold) {
-                    valueOn = match.player2;
+                    bestValuePlayer = match.player2;
                     edgeValue = (diff2 * 100).toFixed(1);
                     recommendedSide = `Punta ${match.player2}`;
                     recommendedOdds = match.odds2;
@@ -231,9 +243,11 @@
                     ...match,
                     probElo1: (probElo1 * 100).toFixed(1),
                     probElo2: (probElo2 * 100).toFixed(1),
-                    probBook1: (probBook1 * 100).toFixed(1),
-                    probBook2: (probBook2 * 100).toFixed(1),
-                    valueOn,
+                    netOdds1: netOdds1.toFixed(2),
+                    netOdds2: netOdds2.toFixed(2),
+                    diff1,
+                    diff2,
+                    valueOn: bestValuePlayer,
                     edgeValue: edgeValue > 0 ? `+${edgeValue}%` : null,
                     recommendedSide,
                     recommendedOdds
@@ -362,9 +376,9 @@
             const opportunities = filteredData.filter(m => m.valueOn !== null);
             oppCount.textContent = `${opportunities.length} opportunità`;
 
-            // Render Tab Occasioni con Orario in evidenza
+            // Render Tab Occasioni con Orario
             if (opportunities.length === 0) {
-                oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna occasione con edge superiore al 3%.</div>';
+                oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna occasione con edge netto superiore al 3%.</div>';
             } else {
                 opportunities.forEach(match => {
                     const card = document.createElement('div');
@@ -372,22 +386,33 @@
                     card.innerHTML = `
                         <div class="flex justify-between items-center text-xs text-slate-400">
                             <span class="font-medium text-emerald-400">${match.tournament} <strong class="text-white font-mono ml-1">(${match.time})</strong></span>
-                            <span class="font-mono bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded font-bold">${match.edgeValue} Edge</span>
+                            <span class="font-mono bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded font-bold">+${(match.valueOn === match.player1 ? match.diff1 : match.diff2 * 100).toFixed(1)}% Edge Netto (5% Comm)</span>
                         </div>
                         <div class="flex justify-between items-center text-sm">
                             <div>
-                                <strong class="text-white">${match.player1} (${match.odds1}) vs ${match.player2} (${match.odds2})</strong>
-                                <div class="text-xs text-emerald-300 mt-1">Consigliato: <strong>${match.recommendedSide}</strong></div>
+                                <strong class="text-white">🎯 Valore su: <span class="text-emerald-300">${match.valueOn}</span></strong>
+                                <div class="text-xs text-slate-400 mt-1">${match.player1} (${match.odds1}) vs ${match.player2} (${match.odds2})</div>
                             </div>
-                            <button onclick="openBetModal(${match.id}, '${match.recommendedSide}', ${match.recommendedOdds})" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition">Gioca</button>
+                            <button onclick="openBetModal(${match.id}, 'Punta ${match.valueOn}', ${match.valueOn === match.player1 ? match.odds1 : match.odds2})" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition">Gioca</button>
                         </div>
                     `;
                     oppContainer.appendChild(card);
                 });
             }
 
-            // Render Tab Palinsesto
+            // Render Tab Palinsesto con Indicatori Verdi/Rossi calcolati sul Netto Betfair
             filteredData.forEach(match => {
+                const isVal1 = match.diff1 > 0.03;
+                const isVal2 = match.diff2 > 0.03;
+
+                const badge1 = isVal1 
+                    ? `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded text-xs font-mono font-bold">🟢 Valore Netto (+${(match.diff1*100).toFixed(1)}%)</span>` 
+                    : `<span class="bg-red-950/40 text-red-400 border border-red-900/50 px-2 py-0.5 rounded text-xs font-mono">🔴 No Valore</span>`;
+
+                const badge2 = isVal2 
+                    ? `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded text-xs font-mono font-bold">🟢 Valore Netto (+${(match.diff2*100).toFixed(1)}%)</span>` 
+                    : `<span class="bg-red-950/40 text-red-400 border border-red-900/50 px-2 py-0.5 rounded text-xs font-mono">🔴 No Valore</span>`;
+
                 const card = document.createElement('div');
                 card.className = "bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 space-y-3";
                 card.innerHTML = `
@@ -397,21 +422,32 @@
                     </div>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm bg-slate-900/60 p-3 rounded-lg border border-slate-800 items-center">
-                        <div class="flex justify-between items-center sm:border-r sm:border-slate-800 sm:pr-3">
-                            <div>
-                                <div class="font-bold text-white">${match.player1} <span class="font-mono text-emerald-400 text-xs ml-1">(Q. ${match.odds1})</span></div>
-                                <div class="text-xs text-slate-400 mt-1">Ultime 5: <span class="font-mono text-slate-300">${match.form1.join(' ')}</span></div>
-                                <div class="text-xs text-slate-400 font-mono mt-0.5">Elo: ${match.probElo1}% | Book: ${match.probBook1}%</div>
+                        <div class="flex flex-col justify-between space-y-2 sm:border-r sm:border-slate-800 sm:pr-3">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-bold text-white">${match.player1} <span class="font-mono text-emerald-400 text-xs ml-1">(Q. ${match.odds1} | Netta: ${match.netOdds1})</span></div>
+                                    <div class="text-xs text-slate-400 mt-0.5">Ultime 5: <span class="font-mono text-slate-300">${match.form1.join(' ')}</span></div>
+                                </div>
+                                <div>${badge1}</div>
                             </div>
-                            <button onclick="openBetModal(${match.id}, 'Punta ${match.player1}', ${match.odds1})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs px-2 py-1 rounded font-mono">Punta</button>
+                            <div class="flex justify-between items-center pt-1 border-t border-slate-800/60 text-xs">
+                                <span class="text-slate-400 font-mono">Elo: <strong class="text-slate-200">${match.probElo1}%</strong></span>
+                                <button onclick="openBetModal(${match.id}, 'Punta ${match.player1}', ${match.odds1})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs px-2.5 py-1 rounded font-mono">Punta</button>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center sm:pl-3">
-                            <div>
-                                <div class="font-bold text-white">${match.player2} <span class="font-mono text-emerald-400 text-xs ml-1">(Q. ${match.odds2})</span></div>
-                                <div class="text-xs text-slate-400 mt-1">Ultime 5: <span class="font-mono text-slate-300">${match.form2.join(' ')}</span></div>
-                                <div class="text-xs text-slate-400 font-mono mt-0.5">Elo: ${match.probElo2}% | Book: ${match.probBook2}%</div>
+
+                        <div class="flex flex-col justify-between space-y-2 sm:pl-3">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-bold text-white">${match.player2} <span class="font-mono text-emerald-400 text-xs ml-1">(Q. ${match.odds2} | Netta: ${match.netOdds2})</span></div>
+                                    <div class="text-xs text-slate-400 mt-0.5">Ultime 5: <span class="font-mono text-slate-300">${match.form2.join(' ')}</span></div>
+                                </div>
+                                <div>${badge2}</div>
                             </div>
-                            <button onclick="openBetModal(${match.id}, 'Punta ${match.player2}', ${match.odds2})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs px-2 py-1 rounded font-mono">Punta</button>
+                            <div class="flex justify-between items-center pt-1 border-t border-slate-800/60 text-xs">
+                                <span class="text-slate-400 font-mono">Elo: <strong class="text-slate-200">${match.probElo2}%</strong></span>
+                                <button onclick="openBetModal(${match.id}, 'Punta ${match.player2}', ${match.odds2})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs px-2.5 py-1 rounded font-mono">Punta</button>
+                            </div>
                         </div>
                     </div>
                 `;
