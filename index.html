@@ -42,7 +42,7 @@
             </section>
         </div>
 
-        <!-- TAB 2: OCCASIONI (Filtro Separato) -->
+        <!-- TAB 2: OCCASIONI (Filtro Separato con Orario) -->
         <div id="tab-occasioni" class="space-y-6 hidden">
             <section class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4 shadow-xl">
                 <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
@@ -246,7 +246,7 @@
             if (!match) return;
 
             activeBetContext = { matchId, sideText };
-            document.getElementById('modal-match-info').textContent = `${match.tournament}: ${match.player1} vs ${match.player2}`;
+            document.getElementById('modal-match-info').textContent = `${match.tournament} (${match.time}): ${match.player1} vs ${match.player2}`;
             document.getElementById('modal-side').value = sideText;
             document.getElementById('modal-odds').value = defaultOdds;
             document.getElementById('bet-modal').classList.remove('hidden');
@@ -289,10 +289,8 @@
 
             target.status = newStatus;
             if (newStatus === 'Vinta') {
-                // Utile lordo = stake * (odds - 1)
                 const grossProfit = target.stake * (target.odds - 1);
-                // Betfair applica il 5% di commissione sulla vincita netta (gross profit)
-                target.pnl = grossProfit * 0.95;
+                target.pnl = grossProfit * 0.95; // Commissione Betfair 5%
             } else if (newStatus === 'Persa') {
                 target.pnl = -target.stake;
             } else {
@@ -364,7 +362,7 @@
             const opportunities = filteredData.filter(m => m.valueOn !== null);
             oppCount.textContent = `${opportunities.length} opportunità`;
 
-            // Render Tab Occasioni
+            // Render Tab Occasioni con Orario in evidenza
             if (opportunities.length === 0) {
                 oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna occasione con edge superiore al 3%.</div>';
             } else {
@@ -373,7 +371,7 @@
                     card.className = "bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-4 space-y-3";
                     card.innerHTML = `
                         <div class="flex justify-between items-center text-xs text-slate-400">
-                            <span class="font-medium text-emerald-400">${match.tournament}</span>
+                            <span class="font-medium text-emerald-400">${match.tournament} <strong class="text-white font-mono ml-1">(${match.time})</strong></span>
                             <span class="font-mono bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded font-bold">${match.edgeValue} Edge</span>
                         </div>
                         <div class="flex justify-between items-center text-sm">
@@ -388,7 +386,7 @@
                 });
             }
 
-            // Render Tab Palinsesto con quote di mercato di fianco ai giocatori
+            // Render Tab Palinsesto
             filteredData.forEach(match => {
                 const card = document.createElement('div');
                 card.className = "bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 space-y-3";
