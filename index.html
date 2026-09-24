@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Value Desk - Betfair Tennis Strategy</title>
+    <title>Value Desk - Tennis Surface & Game Stats</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
@@ -12,7 +12,7 @@
     <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-2">
             <h1 class="text-lg font-black tracking-wider text-emerald-400">VALUE DESK</h1>
-            <span class="text-xs text-slate-400 font-mono">| Betfair Net Value (5% Comm)</span>
+            <span class="text-xs text-slate-400 font-mono">| Superficie & Game Vinti (5% Comm)</span>
         </div>
         <div class="flex gap-2">
             <button onclick="switchTab('palinsesto')" id="btn-palinsesto" class="px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition">Palinsesto</button>
@@ -27,13 +27,13 @@
         <!-- TAB 1: PALINSESTO -->
         <div id="tab-palinsesto" class="space-y-6">
             <div class="relative">
-                <input type="text" id="search-input" placeholder="Cerca tennista o torneo nel palinsesto..." 
+                <input type="text" id="search-input" placeholder="Cerca tennista, superficie o torneo..." 
                     class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
             </div>
 
             <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl">
                 <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Palinsesto & Analisi Elo (Netto Comm. Betfair 5%)</h2>
+                    <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Palinsesto, Superficie & Game Vinti</h2>
                     <span id="match-count" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">0 match</span>
                 </div>
                 <div id="matches-container" class="space-y-4">
@@ -46,7 +46,7 @@
         <div id="tab-occasioni" class="space-y-6 hidden">
             <section class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4 shadow-xl">
                 <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni di Valore Netto (&gt; 3%)</h2>
+                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni di Valore Reale (&gt; 3% Edge Netto)</h2>
                     <span id="opp-count" class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">0 opportunità</span>
                 </div>
                 <div id="opportunities-container" class="space-y-4">
@@ -137,47 +137,68 @@
         </div>
     </div>
 
-    <!-- Script Logica -->
+    <!-- Script Logica con Superficie e Game Vinti -->
     <script>
         let matchesData = [
             {
                 id: 101,
                 tournament: "ATP Masters Shanghai",
+                surface: "Cemento Outdoor",
                 time: "14:00 CET",
                 player1: "J. Menesch",
+                rank1: 35,
                 odds1: 2.20,
-                form1: ["V", "V", "V", "V", "S"],
-                elo1: 1980,
+                surfaceWinRate1: 0.68, // 68% win rate su cemento
+                gameWinAvg1: 54.5,     // % media game vinti
+                recentOpponents1: [20, 15, 42, 28],
+                form1: ["V", "V", "V", "S"],
                 player2: "T. Etcheverry",
+                rank2: 32,
                 odds2: 1.65,
-                form2: ["V", "S", "S", "V", "S"],
-                elo2: 1810
+                surfaceWinRate2: 0.52,
+                gameWinAvg2: 48.0,
+                recentOpponents2: [25, 18, 50, 30],
+                form2: ["V", "S", "S", "V"]
             },
             {
                 id: 102,
                 tournament: "WTA Wuhan",
+                surface: "Cemento Indoor",
                 time: "16:30 CET",
                 player1: "M. Andreeva",
+                rank1: 15,
                 odds1: 1.62,
-                form1: ["V", "V", "V", "S", "V"],
-                elo1: 1910,
+                surfaceWinRate1: 0.72,
+                gameWinAvg1: 56.0,
+                recentOpponents1: [40, 25, 80, 33],
+                form1: ["V", "V", "V", "S"],
                 player2: "L. Fernandez",
+                rank2: 28,
                 odds2: 2.30,
-                form2: ["V", "S", "V", "S", "S"],
-                elo2: 1800
+                surfaceWinRate2: 0.54,
+                gameWinAvg2: 49.2,
+                recentOpponents2: [60, 45, 18, 90],
+                form2: ["V", "S", "V", "S"]
             },
             {
                 id: 103,
                 tournament: "ATP Challenger Valencia",
+                surface: "Terra Rossa",
                 time: "18:00 CET",
                 player1: "D. Goffin",
+                rank1: 85,
                 odds1: 2.50,
-                form1: ["V", "V", "V", "S", "V"],
-                elo1: 1890,
+                surfaceWinRate1: 0.65,
+                gameWinAvg1: 53.0,
+                recentOpponents1: [120, 150, 95, 110],
+                form1: ["S", "V", "V", "V"],
                 player2: "H. Mayot",
+                rank2: 110,
                 odds2: 1.55,
-                form2: ["S", "V", "S", "S", "V"],
-                elo2: 1800
+                surfaceWinRate2: 0.58,
+                gameWinAvg2: 51.0,
+                recentOpponents2: [200, 180, 140, 160],
+                form2: ["S", "V", "S", "S"]
             }
         ];
 
@@ -194,11 +215,23 @@
             document.getElementById('btn-giocate').className = tab === 'giocate' ? 'px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition' : 'px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition';
         }
 
-        function calculateEloProbability(eloA, eloB) {
-            return 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
+        // Calcolo Elo ponderato che include anche il rendimento sulla superficie specifica
+        function calculateSurfaceElo(rank, surfaceWinRate, recentOpponents, form) {
+            let baseElo = 2200 - (rank * 8);
+            let surfaceBonus = (surfaceWinRate - 0.5) * 300; // Bonus/Malus in base al win rate sulla superficie
+            
+            let oppBonus = 0;
+            for(let i = 0; i < recentOpponents.length; i++) {
+                const oppRank = recentOpponents[i];
+                if (form[i] === 'V') {
+                    oppBonus += (200 - oppRank) * 0.3;
+                } else {
+                    oppBonus -= (200 - oppRank) * 0.15;
+                }
+            }
+            return Math.round(baseElo + surfaceBonus + oppBonus);
         }
 
-        // Funzione per calcolare la quota netta Betfair (scontando il 5% sull'utile)
         function getNetOdds(odds) {
             const netProfit = (odds - 1) * 0.95;
             return 1 + netProfit;
@@ -206,21 +239,22 @@
 
         function processMatches() {
             return matchesData.map(match => {
-                const probElo1 = calculateEloProbability(match.elo1, match.elo2);
+                const elo1 = calculateSurfaceElo(match.rank1, match.surfaceWinRate1, match.recentOpponents1, match.form1);
+                const elo2 = calculateSurfaceElo(match.rank2, match.surfaceWinRate2, match.recentOpponents2, match.form2);
+
+                const probElo1 = 1 / (1 + Math.pow(10, (elo2 - elo1) / 400));
                 const probElo2 = 1 - probElo1;
 
-                // Calcolo della probabilità implicita basata sulla quota NETTA di Betfair (commissione 5% inclusa)
                 const netOdds1 = getNetOdds(match.odds1);
                 const netOdds2 = getNetOdds(match.odds2);
 
                 const probNetBook1 = 1 / netOdds1;
                 const probNetBook2 = 1 / netOdds2;
 
-                // Margine di valore calcolato al netto delle commissioni
                 const diff1 = probElo1 - probNetBook1;
                 const diff2 = probElo2 - probNetBook2;
 
-                const threshold = 0.03; // 3% di edge netto minimo
+                const threshold = 0.03; 
                 
                 let bestValuePlayer = null;
                 let edgeValue = 0;
@@ -260,7 +294,7 @@
             if (!match) return;
 
             activeBetContext = { matchId, sideText };
-            document.getElementById('modal-match-info').textContent = `${match.tournament} (${match.time}): ${match.player1} vs ${match.player2}`;
+            document.getElementById('modal-match-info').textContent = `${match.tournament} [${match.surface}] (${match.time}): ${match.player1} vs ${match.player2}`;
             document.getElementById('modal-side').value = sideText;
             document.getElementById('modal-odds').value = defaultOdds;
             document.getElementById('bet-modal').classList.remove('hidden');
@@ -284,7 +318,7 @@
 
             placedBets.push({
                 id: Date.now(),
-                match: `${match.player1} vs ${match.player2}`,
+                match: `${match.player1} vs ${match.player2} (${match.surface})`,
                 side: activeBetContext.sideText,
                 odds: odds,
                 stake: stake,
@@ -304,7 +338,7 @@
             target.status = newStatus;
             if (newStatus === 'Vinta') {
                 const grossProfit = target.stake * (target.odds - 1);
-                target.pnl = grossProfit * 0.95; // Commissione Betfair 5%
+                target.pnl = grossProfit * 0.95; // Commissione 5% Betfair
             } else if (newStatus === 'Persa') {
                 target.pnl = -target.stake;
             } else {
@@ -368,7 +402,8 @@
             const filteredData = processed.filter(m => 
                 m.player1.toLowerCase().includes(query) || 
                 m.player2.toLowerCase().includes(query) || 
-                m.tournament.toLowerCase().includes(query)
+                m.tournament.toLowerCase().includes(query) ||
+                m.surface.toLowerCase().includes(query)
             );
 
             matchCount.textContent = `${filteredData.length} match`;
@@ -376,7 +411,7 @@
             const opportunities = filteredData.filter(m => m.valueOn !== null);
             oppCount.textContent = `${opportunities.length} opportunità`;
 
-            // Render Tab Occasioni con Orario
+            // Render Tab Occasioni
             if (opportunities.length === 0) {
                 oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna occasione con edge netto superiore al 3%.</div>';
             } else {
@@ -385,8 +420,8 @@
                     card.className = "bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-4 space-y-3";
                     card.innerHTML = `
                         <div class="flex justify-between items-center text-xs text-slate-400">
-                            <span class="font-medium text-emerald-400">${match.tournament} <strong class="text-white font-mono ml-1">(${match.time})</strong></span>
-                            <span class="font-mono bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded font-bold">+${(match.valueOn === match.player1 ? match.diff1 : match.diff2 * 100).toFixed(1)}% Edge Netto (5% Comm)</span>
+                            <span class="font-medium text-emerald-400">${match.tournament} <span class="text-slate-300">[${match.surface}]</span> <strong class="text-white font-mono ml-1">(${match.time})</strong></span>
+                            <span class="font-mono bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded font-bold">+${(match.valueOn === match.player1 ? match.diff1 : match.diff2 * 100).toFixed(1)}% Edge Netto</span>
                         </div>
                         <div class="flex justify-between items-center text-sm">
                             <div>
@@ -400,7 +435,7 @@
                 });
             }
 
-            // Render Tab Palinsesto con Indicatori Verdi/Rossi calcolati sul Netto Betfair
+            // Render Tab Palinsesto con Superficie e Game Vinti
             filteredData.forEach(match => {
                 const isVal1 = match.diff1 > 0.03;
                 const isVal2 = match.diff2 > 0.03;
@@ -417,7 +452,7 @@
                 card.className = "bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 space-y-3";
                 card.innerHTML = `
                     <div class="flex justify-between items-center text-xs text-slate-400">
-                        <span class="font-medium text-slate-300">${match.tournament}</span>
+                        <span class="font-medium text-slate-300">${match.tournament} <span class="text-emerald-400 font-semibold ml-1">⚡ Superficie: ${match.surface}</span></span>
                         <span class="font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-300">${match.time}</span>
                     </div>
                     
@@ -425,13 +460,13 @@
                         <div class="flex flex-col justify-between space-y-2 sm:border-r sm:border-slate-800 sm:pr-3">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <div class="font-bold text-white">${match.player1} <span class="font-mono text-emerald-400 text-xs ml-1">(Q. ${match.odds1} | Netta: ${match.netOdds1})</span></div>
-                                    <div class="text-xs text-slate-400 mt-0.5">Ultime 5: <span class="font-mono text-slate-300">${match.form1.join(' ')}</span></div>
+                                    <div class="font-bold text-white">${match.player1} <span class="font-mono text-emerald-400 text-xs ml-1">(Q. ${match.odds1})</span></div>
+                                    <div class="text-xs text-slate-400 mt-0.5">Game Vinti stimati: <span class="font-mono text-emerald-300">${match.gameWinAvg1}%</span> | Superficie Win: <span class="font-mono text-slate-200">${(match.surfaceWinRate1*100).toFixed(0)}%</span></div>
                                 </div>
                                 <div>${badge1}</div>
                             </div>
                             <div class="flex justify-between items-center pt-1 border-t border-slate-800/60 text-xs">
-                                <span class="text-slate-400 font-mono">Elo: <strong class="text-slate-200">${match.probElo1}%</strong></span>
+                                <span class="text-slate-400 font-mono">Elo Superficie: <strong class="text-slate-200">${match.probElo1}%</strong></span>
                                 <button onclick="openBetModal(${match.id}, 'Punta ${match.player1}', ${match.odds1})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs px-2.5 py-1 rounded font-mono">Punta</button>
                             </div>
                         </div>
@@ -439,13 +474,13 @@
                         <div class="flex flex-col justify-between space-y-2 sm:pl-3">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <div class="font-bold text-white">${match.player2} <span class="font-mono text-emerald-400 text-xs ml-1">(Q. ${match.odds2} | Netta: ${match.netOdds2})</span></div>
-                                    <div class="text-xs text-slate-400 mt-0.5">Ultime 5: <span class="font-mono text-slate-300">${match.form2.join(' ')}</span></div>
+                                    <div class="font-bold text-white">${match.player2} <span class="font-mono text-emerald-400 text-xs ml-1">(Q. ${match.odds2})</span></div>
+                                    <div class="text-xs text-slate-400 mt-0.5">Game Vinti stimati: <span class="font-mono text-emerald-300">${match.gameWinAvg2}%</span> | Superficie Win: <span class="font-mono text-slate-200">${(match.surfaceWinRate2*100).toFixed(0)}%</span></div>
                                 </div>
                                 <div>${badge2}</div>
                             </div>
                             <div class="flex justify-between items-center pt-1 border-t border-slate-800/60 text-xs">
-                                <span class="text-slate-400 font-mono">Elo: <strong class="text-slate-200">${match.probElo2}%</strong></span>
+                                <span class="text-slate-400 font-mono">Elo Superficie: <strong class="text-slate-200">${match.probElo2}%</strong></span>
                                 <button onclick="openBetModal(${match.id}, 'Punta ${match.player2}', ${match.odds2})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs px-2.5 py-1 rounded font-mono">Punta</button>
                             </div>
                         </div>
