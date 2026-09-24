@@ -1,106 +1,33 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Value Desk - Betting Analysis</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
-        .card { background-color: #1e293b; border-radius: 0.75rem; border: 1px solid #334155; }
-        .btn-primary { background-color: #10b981; color: #022c22; font-weight: 600; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: all 0.2s; }
-        .btn-primary:hover { background-color: #34d399; }
-    </style>
-</head>
-<body class="p-4 md:p-8 max-w-7xl mx-auto">
-    <!-- Header -->
-    <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-slate-700 pb-4">
-        <div>
-            <h1 class="text-3xl font-bold text-emerald-400">Value Desk</h1>
-            <p class="text-slate-400 text-sm">Edge statistico su quote reali — Punta o Banca</p>
-        </div>
-        <div class="flex gap-4 text-sm bg-slate-800 p-3 rounded-lg border border-slate-700">
-            <div>Bankroll: <strong class="text-emerald-400">€20.00</strong></div>
-            <div>Comm. Betfair: <strong class="text-emerald-400">5%</strong></div>
-            <div>Kelly Fraz.: <strong class="text-emerald-400">25%</strong></div>
-        </div>
-    </header>
+<script>
+function getMatches() {
+    var matches = [
+        {date: '2026-09-24', time: '15:30', opponent: 'John Doe'},
+        {date: '2026-09-25', time: '18:00', opponent: 'Jane Smith'}
+    ];
 
-    <!-- Navigation -->
-    <nav class="flex gap-2 mb-6 border-b border-slate-700 pb-2">
-        <button onclick="switchTab('palinsesto')" id="tab-palinsesto" class="px-4 py-2 rounded-lg font-medium text-emerald-400 bg-slate-800">Palinsesto</button>
-        <button onclick="switchTab('cassa')" id="tab-cassa" class="px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white">Gestione Cassa</button>
-        <button onclick="switchTab('calcolatore')" id="tab-calcolatore" class="px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white">Calcolatore</button>
-    </nav>
+    var matchesList = document.getElementById('matches');
+    for (var i = 0; i < matches.length; i++) {
+        var match = matches[i];
+        var li = document.createElement('li');
+        li.textContent = 'Data: ' + match.date + ', Ora: ' + match.time + ', Avversario: ' + match.opponent;
+        matchesList.appendChild(li);
+    }
+}
 
-    <!-- Tab: Palinsesto -->
-    <main id="content-palinsesto" class="space-y-6">
-        <div class="flex justify-between items-center">
-            <h2 class="text-xl font-semibold">Palinsesto Oggi</h2>
-            <button onclick="loadPalinsesto()" class="btn-primary text-sm">Aggiorna Dati</button>
-        </div>
-        <div id="matches-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div class="card p-6 text-center text-slate-400 col-span-full">
-                Caricamento palinsesto in corso...
-            </div>
-        </div>
-    </main>
+function updateMatches() {
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
 
-    <!-- Script per la gestione della logica e chiamata alla Function Netlify -->
-    <script>
-        function switchTab(tab) {
-            ['palinsesto', 'cassa', 'calcolatore'].forEach(t => {
-                const el = document.getElementById('content-' + t);
-                const btn = document.getElementById('tab-' + t);
-                if (el && btn) {
-                    if (t === tab) {
-                        el.classList.remove('hidden');
-                        btn.className = "px-4 py-2 rounded-lg font-medium text-emerald-400 bg-slate-800";
-                    } else {
-                        el.classList.add('hidden');
-                        btn.className = "px-4 py-2 rounded-lg font-medium text-slate-400 hover:text-white";
-                    }
-                }
-            });
-        }
+    var matchesList = document.getElementById('matches');
+    while (matchesList.firstChild) {
+        matchesList.removeChild(matchesList.firstChild);
+    }
 
-        async function loadPalinsesto() {
-            const container = document.getElementById('matches-container');
-            container.innerHTML = '<div class="card p-6 text-center text-slate-400 col-span-full">Download eventi da Betfair/Functions...</div>';
-            
-            try {
-                // Chiamata alla Netlify Function per recuperare il palinsesto
-                const res = await fetch('/.netlify/functions/schedule');
-                if (!res.ok) throw new Error('Errore durante il recupero dei dati');
-                const data = await res.json();
-                
-                if (!data || data.length === 0) {
-                    container.innerHTML = '<div class="card p-6 text-center text-slate-400 col-span-full">Nessun evento disponibile al momento.</div>';
-                    return;
-                }
+    for (var i = today; i <= tomorrow; i++) {
+        getMatches();
+    }
+}
 
-                container.innerHTML = data.map(m => `
-                    <div class="card p-4 hover:border-emerald-500 transition">
-                        <div class="text-xs text-emerald-400 font-semibold mb-1">${m.league || 'Calcio'}</div>
-                        <div class="font-bold text-lg mb-2">${m.homeTeam} vs ${m.awayTeam}</div>
-                        <div class="flex justify-between items-center text-sm bg-slate-900 p-2 rounded">
-                            <span>Quota 1: <strong>${m.odds1 || '-'}</strong></span>
-                            <span>Quota X: <strong>${m.oddsX || '-'}</strong></span>
-                            <span>Quota 2: <strong>${m.odds2 || '-'}</strong></span>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (err) {
-                container.innerHTML = `
-                    <div class="card p-6 text-center text-red-400 col-span-full">
-                        Non riesco a leggere il palinsesto in questo momento.
-                        <br><span class="text-xs text-slate-500">${err.message}</span>
-                    </div>`;
-            }
-        }
-
-        // Avvio automatico al caricamento
-        document.addEventListener('DOMContentLoaded', loadPalinsesto);
-    </script>
-</body>
-</html>
+setInterval(updateMatches, 60 * 1000); // Update every minute
+</script>

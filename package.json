@@ -1,7 +1,0 @@
-{
-  "name": "value-desk-site",
-  "private": true,
-  "dependencies": {
-    "node-html-parser": "^6.1.13"
-  }
-}
