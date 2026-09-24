@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Value Desk - Expanded Pro Tennis Engine</title>
+    <title>Value Desk - Pro Tennis Engine (Fair Odds & Bookmaker Analysis)</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
@@ -12,7 +12,7 @@
     <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-2">
             <h1 class="text-lg font-black tracking-wider text-emerald-400">VALUE DESK</h1>
-            <span class="text-xs text-slate-400 font-mono">| Expanded Pro Engine (Class A/B System)</span>
+            <span class="text-xs text-slate-400 font-mono">| Model Fair Odds vs Market Bookmakers</span>
         </div>
         <div class="flex gap-2">
             <button onclick="switchTab('palinsesto')" id="btn-palinsesto" class="px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition">Palinsesto</button>
@@ -33,7 +33,7 @@
 
             <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl">
                 <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Palinsesto & Analisi Multidimensionale Calibrata</h2>
+                    <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Palinsesto & Quota Minima Modello vs Bookmakers</h2>
                     <span id="match-count" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">0 match</span>
                 </div>
                 <div id="matches-container" class="space-y-4">
@@ -46,7 +46,7 @@
         <div id="tab-occasioni" class="space-y-6 hidden">
             <section class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4 shadow-xl">
                 <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni & Segnali (Classe A/B, EV &ge; 1.5%)</h2>
+                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni (Quota Book &ge; Quota Minima Calcolata)</h2>
                     <span id="opp-count" class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">0 opportunità</span>
                 </div>
                 <div id="opportunities-container" class="space-y-4">
@@ -59,7 +59,7 @@
         <div id="tab-giocate" class="space-y-6 hidden">
             <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl space-y-4">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-emerald-400">📊 Storico Giocate, Utili e ROI (Netto Comm. 5%)</h2>
+                    <h2 class="text-md font-semibold text-emerald-400">📊 Storico Giocate, Utili e ROI (Riferimento Bookmakers)</h2>
                     <div class="text-xs font-mono text-slate-400">Cassa Iniziale: <strong class="text-white">€1,000.00</strong></div>
                 </div>
                 
@@ -88,10 +88,10 @@
                             <tr class="border-b border-slate-800 text-slate-400">
                                 <th class="pb-2">Match</th>
                                 <th class="pb-2">Scelta</th>
-                                <th class="pb-2">Quota Betfair</th>
+                                <th class="pb-2">Quota Book</th>
                                 <th class="pb-2">Stake</th>
                                 <th class="pb-2">Esito</th>
-                                <th class="pb-2">Utile/Perdita Netto</th>
+                                <th class="pb-2">Utile/Perdita</th>
                             </tr>
                         </thead>
                         <tbody id="bets-table-body">
@@ -106,11 +106,11 @@
 
     </main>
 
-    <!-- Modale Scommessa Betfair -->
+    <!-- Modale Inserimento Giocata Bookmaker -->
     <div id="bet-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                <h3 class="text-sm font-bold text-emerald-400">Piazza Giocata su Betfair</h3>
+                <h3 class="text-sm font-bold text-emerald-400">Registra Giocata su Bookmaker</h3>
                 <button onclick="closeBetModal()" class="text-slate-400 hover:text-white text-sm font-bold">✕</button>
             </div>
             <div id="modal-match-info" class="text-xs text-slate-300 font-mono"></div>
@@ -121,7 +121,7 @@
                     <input type="text" id="modal-side" disabled class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-300 font-mono">
                 </div>
                 <div>
-                    <label class="block text-slate-400 mb-1">Quota Reale Betfair</label>
+                    <label class="block text-slate-400 mb-1">Quota Reale Bookmaker (es. Pinnacle / Media)</label>
                     <input type="number" id="modal-odds" step="0.01" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 font-mono">
                 </div>
                 <div>
@@ -137,7 +137,7 @@
         </div>
     </div>
 
-    <!-- Script Logica Ampliata -->
+    <!-- Script Logica -->
     <script>
         let matchesData = [
             {
@@ -148,7 +148,7 @@
                 time: "14:00 CET",
                 player1: "J. Menesch",
                 rank1: 35,
-                odds1: 2.15,
+                odds1: 2.15, // Quota di riferimento media / sharp book
                 eloOverall1: 1870,
                 eloSurface1: 1890,
                 eloRecent1: 1880,
@@ -159,7 +159,7 @@
                 player2: "T. Etcheverry",
                 rank2: 32,
                 odds2: 1.80,
-                eloOverall2: 1850,
+                eloOverall1: 1850,
                 eloSurface2: 1835,
                 eloRecent2: 1840,
                 surfaceMatchesCount2: 18,
@@ -175,7 +175,7 @@
                 time: "16:30 CET",
                 player1: "M. Andreeva",
                 rank1: 15,
-                odds1: 1.75,
+                odds1: 1.55,
                 eloOverall1: 1910,
                 eloSurface1: 1930,
                 eloRecent1: 1920,
@@ -185,7 +185,7 @@
                 form1: ["V", "V", "V", "S"],
                 player2: "L. Fernandez",
                 rank2: 28,
-                odds2: 2.20,
+                odds2: 2.65,
                 eloOverall2: 1830,
                 eloSurface2: 1810,
                 eloRecent2: 1820,
@@ -220,33 +220,6 @@
                 sosRecent2: 110,
                 gameWinAvg2: 50.1,
                 form2: ["S", "V", "S", "S"]
-            },
-            {
-                id: 104,
-                tournament: "ATP Masters Shanghai",
-                tier: "ATP 1000",
-                surface: "hard",
-                time: "19:30 CET",
-                player1: "A. Bublik",
-                rank1: 27,
-                odds1: 2.45,
-                eloOverall1: 1860,
-                eloSurface1: 1885,
-                eloRecent1: 1870,
-                surfaceMatchesCount1: 19,
-                sosRecent1: 35,
-                gameWinAvg1: 52.1,
-                form1: ["V", "S", "V", "V"],
-                player2: "F. Cerundolo",
-                rank2: 31,
-                odds2: 1.60,
-                eloOverall2: 1840,
-                eloSurface2: 1815,
-                eloRecent2: 1825,
-                surfaceMatchesCount2: 16,
-                sosRecent2: 40,
-                gameWinAvg2: 49.2,
-                form2: ["S", "V", "S", "V"]
             }
         ];
 
@@ -279,11 +252,6 @@
             return Math.min(Math.max(score, 40), 95);
         }
 
-        function getNetOdds(odds) {
-            const netProfit = (odds - 1) * 0.95;
-            return 1 + netProfit;
-        }
-
         function processMatches() {
             return matchesData.map(match => {
                 const effElo1 = getEffectiveElo(match.eloSurface1, match.eloOverall1, match.eloRecent1, match.surfaceMatchesCount1);
@@ -294,62 +262,61 @@
                 const totalScoreDiff = eloDiff + gameDiff;
 
                 const rawProb1 = 1 / (1 + Math.pow(10, -totalScoreDiff / 400));
-                const damping = 0.90; // Sintonizzato per catturare micro-vantaggi
+                const damping = 0.90;
                 const probElo1 = 0.5 + (rawProb1 - 0.5) * damping;
                 const probElo2 = 1 - probElo1;
 
-                const netOdds1 = getNetOdds(match.odds1);
-                const netOdds2 = getNetOdds(match.odds2);
-                const rawMarket1 = 1 / netOdds1;
-                const rawMarket2 = 1 / netOdds2;
+                // Calcolo Quota Minima di Valore (Fair Odds con target EV +1.5%)
+                const targetEV = 0.015; 
+                const minGrossOdds1 = (1 + targetEV) / probElo1;
+                const minGrossOdds2 = (1 + targetEV) / probElo2;
+
+                const rawMarket1 = 1 / match.odds1;
+                const rawMarket2 = 1 / match.odds2;
                 const marketNoVig1 = rawMarket1 / (rawMarket1 + rawMarket2);
                 const marketNoVig2 = rawMarket2 / (rawMarket1 + rawMarket2);
 
-                const netEdge1 = probElo1 - marketNoVig1;
-                const netEdge2 = probElo2 - marketNoVig2;
-
-                const netEv1 = probElo1 * (netOdds1 - 1) * 0.95 - (1 - probElo1);
-                const netEv2 = probElo2 * (netOdds2 - 1) * 0.95 - (1 - probElo2);
+                const ev1 = probElo1 * match.odds1 - 1;
+                const ev2 = probElo2 * match.odds2 - 1;
 
                 const confidence1 = calculateConfidenceScore(match.surfaceMatchesCount1, match.gameWinAvg1, match.tier);
                 const confidence2 = calculateConfidenceScore(match.surfaceMatchesCount2, match.gameWinAvg2, match.tier);
 
-                let valueOn = null;
-                let betClass = null; // Class A or B
-                let bestEv = 0;
-                let recommendedSide = "";
-                let recommendedOdds = 0;
+                // Condizione di convenienza: la quota del book deve essere >= della quota minima calcolata dal modello
+                const isValue1 = match.odds1 >= minGrossOdds1 && ev1 >= 0.015 && confidence1 >= 60;
+                const isValue2 = match.odds2 >= minGrossOdds2 && ev2 >= 0.015 && confidence2 >= 60;
 
-                // Valutazione Fasce EV (Soglia minima ammessa 1.5%)
-                if (netEv1 >= 0.03 && netEdge1 >= 0.015 && confidence1 >= 65) {
-                    valueOn = match.player1; betClass = "Classe A"; bestEv = (netEv1 * 100).toFixed(1);
-                    recommendedSide = `Punta ${match.player1}`; recommendedOdds = match.odds1;
-                } else if (netEv1 >= 0.015 && netEdge1 >= 0.010 && confidence1 >= 60) {
-                    valueOn = match.player1; betClass = "Classe B"; bestEv = (netEv1 * 100).toFixed(1);
-                    recommendedSide = `Punta ${match.player1}`; recommendedOdds = match.odds1;
-                } else if (netEv2 >= 0.03 && netEdge2 >= 0.015 && confidence2 >= 65) {
-                    valueOn = match.player2; betClass = "Classe A"; bestEv = (netEv2 * 100).toFixed(1);
-                    recommendedSide = `Punta ${match.player2}`; recommendedOdds = match.odds2;
-                } else if (netEv2 >= 0.015 && netEdge2 >= 0.010 && confidence2 >= 60) {
-                    valueOn = match.player2; betClass = "Classe B"; bestEv = (netEv2 * 100).toFixed(1);
-                    recommendedSide = `Punta ${match.player2}`; recommendedOdds = match.odds2;
+                let valueOn = null;
+                let betClass = null;
+                let bestEv = 0;
+
+                if (isValue1) {
+                    valueOn = match.player1;
+                    betClass = ev1 >= 0.05 ? "Classe A" : "Classe B";
+                    bestEv = (ev1 * 100).toFixed(1);
+                } else if (isValue2) {
+                    valueOn = match.player2;
+                    betClass = ev2 >= 0.05 ? "Classe A" : "Classe B";
+                    bestEv = (ev2 * 100).toFixed(1);
                 }
 
                 return {
                     ...match,
                     probElo1: (probElo1 * 100).toFixed(1),
                     probElo2: (probElo2 * 100).toFixed(1),
-                    netOdds1: netOdds1.toFixed(2),
-                    netOdds2: netOdds2.toFixed(2),
-                    netEv1: (netEv1 * 100).toFixed(1),
-                    netEv2: (netEv2 * 100).toFixed(1),
+                    marketNoVig1: (marketNoVig1 * 100).toFixed(1),
+                    marketNoVig2: (marketNoVig2 * 100).toFixed(1),
+                    minGrossOdds1: minGrossOdds1.toFixed(2),
+                    minGrossOdds2: minGrossOdds2.toFixed(2),
+                    ev1: (ev1 * 100).toFixed(1),
+                    ev2: (ev2 * 100).toFixed(1),
                     confidence1,
                     confidence2,
+                    isValue1,
+                    isValue2,
                     valueOn,
                     betClass,
-                    bestEv: bestEv ? `+${bestEv}% EV` : null,
-                    recommendedSide,
-                    recommendedOdds
+                    bestEv: bestEv ? `+${bestEv}% EV` : null
                 };
             });
         }
@@ -397,8 +364,7 @@
             if (!target) return;
             target.status = newStatus;
             if (newStatus === 'Vinta') {
-                const grossProfit = target.stake * (target.odds - 1);
-                target.pnl = grossProfit * 0.95;
+                target.pnl = target.stake * (target.odds - 1);
             } else if (newStatus === 'Persa') {
                 target.pnl = -target.stake;
             } else {
@@ -465,16 +431,12 @@
             oppCount.textContent = `${opportunities.length} opportunità`;
 
             if (opportunities.length === 0) {
-                oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna occasione con Net EV >= 1.5% e Confidence >= 60.</div>';
+                oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna quota bookmaker supera la soglia minima calcolata dal modello.</div>';
             } else {
                 opportunities.forEach(match => {
                     const isClassA = match.betClass === "Classe A";
-                    const badgeClass = isClassA 
-                        ? "bg-emerald-950/40 border-emerald-500/40" 
-                        : "bg-amber-950/30 border-amber-500/40";
-                    const badgeText = isClassA 
-                        ? "bg-emerald-900/40 text-emerald-300" 
-                        : "bg-amber-900/40 text-amber-300";
+                    const badgeClass = isClassA ? "bg-emerald-950/40 border-emerald-500/40" : "bg-amber-950/30 border-amber-500/40";
+                    const badgeText = isClassA ? "bg-emerald-900/40 text-emerald-300" : "bg-amber-900/40 text-amber-300";
 
                     const card = document.createElement('div');
                     card.className = `${badgeClass} border rounded-xl p-4 space-y-3`;
@@ -485,8 +447,8 @@
                         </div>
                         <div class="flex justify-between items-center text-sm">
                             <div>
-                                <strong class="text-white">🎯 ${isClassA ? 'Bet Principale' : 'Monitora (Stake Ridotto)'} su: <span class="${isClassA ? 'text-emerald-300' : 'text-amber-300'}">${match.valueOn}</span></strong>
-                                <div class="text-xs text-slate-400 mt-1">${match.player1} (${match.odds1}) vs ${match.player2} (${match.odds2})</div>
+                                <strong class="text-white">🎯 ${isClassA ? 'Bet Consigliata' : 'Monitora'} su: <span class="${isClassA ? 'text-emerald-300' : 'text-amber-300'}">${match.valueOn}</span></strong>
+                                <div class="text-xs text-slate-400 mt-1">Quota Book (Media/Sharp): <strong class="text-white">${match.valueOn === match.player1 ? match.odds1 : match.odds2}</strong> (Soglia minima modello: <strong class="text-emerald-400">${match.valueOn === match.player1 ? match.minGrossOdds1 : match.minGrossOdds2}</strong>) ✅</div>
                             </div>
                             <button onclick="openBetModal(${match.id}, 'Punta ${match.valueOn}', ${match.valueOn === match.player1 ? match.odds1 : match.odds2})" class="${isClassA ? 'bg-emerald-500 hover:bg-emerald-400' : 'bg-amber-500 hover:bg-amber-400'} text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs transition">Gioca</button>
                         </div>
@@ -496,22 +458,13 @@
             }
 
             filteredData.forEach(match => {
-                const ev1 = parseFloat(match.netEv1);
-                const ev2 = parseFloat(match.netEv2);
+                let badge1 = match.isValue1 ? 
+                    `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded text-xs font-mono font-bold">🎯 VALUE OK (EV: +${match.ev1}%)</span>` : 
+                    `<span class="bg-slate-900 text-slate-400 border border-slate-800 px-2 py-0.5 rounded text-xs font-mono">⚠️ Sotto Quota Minima</span>`;
 
-                let badge1 = `<span class="bg-red-950/40 text-red-400 border border-red-900/50 px-2 py-0.5 rounded text-xs font-mono">🔴 No Bet (${match.netEv1}%)</span>`;
-                if (ev1 >= 3.0 && match.confidence1 >= 65) {
-                    badge1 = `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded text-xs font-mono font-bold">🟢 EV: +${match.netEv1}% (A)</span>`;
-                } else if (ev1 >= 1.5 && match.confidence1 >= 60) {
-                    badge1 = `<span class="bg-amber-950 text-amber-400 border border-amber-800 px-2 py-0.5 rounded text-xs font-mono font-bold">🟡 EV: +${match.netEv1}% (B)</span>`;
-                }
-
-                let badge2 = `<span class="bg-red-950/40 text-red-400 border border-red-900/50 px-2 py-0.5 rounded text-xs font-mono">🔴 No Bet (${match.netEv2}%)</span>`;
-                if (ev2 >= 3.0 && match.confidence2 >= 65) {
-                    badge2 = `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded text-xs font-mono font-bold">🟢 EV: +${match.netEv2}% (A)</span>`;
-                } else if (ev2 >= 1.5 && match.confidence2 >= 60) {
-                    badge2 = `<span class="bg-amber-950 text-amber-400 border border-amber-800 px-2 py-0.5 rounded text-xs font-mono font-bold">🟡 EV: +${match.netEv2}% (B)</span>`;
-                }
+                let badge2 = match.isValue2 ? 
+                    `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded text-xs font-mono font-bold">🎯 VALUE OK (EV: +${match.ev2}%)</span>` : 
+                    `<span class="bg-slate-900 text-slate-400 border border-slate-800 px-2 py-0.5 rounded text-xs font-mono">⚠️ Sotto Quota Minima</span>`;
 
                 const card = document.createElement('div');
                 card.className = "bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 space-y-3";
@@ -525,28 +478,30 @@
                         <div class="flex flex-col justify-between space-y-2 sm:border-r sm:border-slate-800 sm:pr-3">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <div class="font-bold text-white">${match.player1} <span class="text-xs text-slate-400 font-normal">(Rank ${match.rank1})</span> <span class="font-mono text-emerald-400 text-xs ml-1">(Q. ${match.odds1})</span></div>
-                                    <div class="text-xs text-slate-400 mt-0.5">Conf: <span class="font-mono text-emerald-300">${match.confidence1}/100</span> | SOS: <span class="font-mono text-slate-200">${match.sosRecent1}</span></div>
+                                    <div class="font-bold text-white">${match.player1} <span class="text-xs text-slate-400 font-normal">(Rank ${match.rank1})</span> <span class="font-mono text-emerald-400 text-xs ml-1">(Q. Book: ${match.odds1})</span></div>
+                                    <div class="text-xs text-slate-400 mt-0.5">Quota Minima Modello: <strong class="text-amber-300 font-mono">${match.minGrossOdds1}</strong></div>
                                 </div>
                                 <div>${badge1}</div>
                             </div>
-                            <div class="flex justify-between items-center pt-1 border-t border-slate-800/60 text-xs">
-                                <span class="text-slate-400 font-mono">Model Prob: <strong class="text-slate-200">${match.probElo1}%</strong></span>
-                                <button onclick="openBetModal(${match.id}, 'Punta ${match.player1}', ${match.odds1})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs px-2.5 py-1 rounded font-mono">Punta</button>
+                            <div class="flex justify-between items-center pt-1 border-t border-slate-800/60 text-xs text-slate-300 font-mono">
+                                <span>Model Prob: <strong class="text-white">${match.probElo1}%</strong></span>
+                                <span>Book (No-Vig): <strong class="text-emerald-400">${match.marketNoVig1}%</strong></span>
+                                <button onclick="openBetModal(${match.id}, 'Punta ${match.player1}', ${match.odds1})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs px-2.5 py-1 rounded">Punta</button>
                             </div>
                         </div>
 
                         <div class="flex flex-col justify-between space-y-2 sm:pl-3">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <div class="font-bold text-white">${match.player2} <span class="text-xs text-slate-400 font-normal">(Rank ${match.rank2})</span> <span class="font-mono text-emerald-400 text-xs ml-1">(Q. ${match.odds2})</span></div>
-                                    <div class="text-xs text-slate-400 mt-0.5">Conf: <span class="font-mono text-emerald-300">${match.confidence2}/100</span> | SOS: <span class="font-mono text-slate-200">${match.sosRecent2}</span></div>
+                                    <div class="font-bold text-white">${match.player2} <span class="text-xs text-slate-400 font-normal">(Rank ${match.rank2})</span> <span class="font-mono text-emerald-400 text-xs ml-1">(Q. Book: ${match.odds2})</span></div>
+                                    <div class="text-xs text-slate-400 mt-0.5">Quota Minima Modello: <strong class="text-amber-300 font-mono">${match.minGrossOdds2}</strong></div>
                                 </div>
                                 <div>${badge2}</div>
                             </div>
-                            <div class="flex justify-between items-center pt-1 border-t border-slate-800/60 text-xs">
-                                <span class="text-slate-400 font-mono">Model Prob: <strong class="text-slate-200">${match.probElo2}%</strong></span>
-                                <button onclick="openBetModal(${match.id}, 'Punta ${match.player2}', ${match.odds2})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs px-2.5 py-1 rounded font-mono">Punta</button>
+                            <div class="flex justify-between items-center pt-1 border-t border-slate-800/60 text-xs text-slate-300 font-mono">
+                                <span>Model Prob: <strong class="text-white">${match.probElo2}%</strong></span>
+                                <span>Book (No-Vig): <strong class="text-emerald-400">${match.marketNoVig2}%</strong></span>
+                                <button onclick="openBetModal(${match.id}, 'Punta ${match.player2}', ${match.odds2})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs px-2.5 py-1 rounded">Punta</button>
                             </div>
                         </div>
                     </div>
