@@ -6,41 +6,60 @@
     <title>Value Desk - Tennis Betting Analysis</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
 
     <!-- Header -->
-    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
-        <h1 class="text-lg font-bold tracking-wider text-emerald-400">VALUE DESK</h1>
-        <span class="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded">Live Client-Side</span>
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
+        <h1 class="text-lg font-black tracking-wider text-emerald-400">VALUE DESK</h1>
+        <div class="flex items-center gap-2">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span class="text-xs text-slate-400 font-mono">LIVE SYSTEM</span>
+        </div>
     </header>
 
     <!-- Main Container -->
     <main class="flex-1 max-w-4xl w-full mx-auto p-4 space-y-6">
         
-        <!-- Sezione Palinsesto -->
-        <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-lg">
+        <!-- Barra di Ricerca Veloce -->
+        <div class="relative">
+            <input type="text" id="search-input" placeholder="Cerca tennista o torneo..." 
+                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
+        </div>
+
+        <!-- Sezione Occasioni (Value Bets) -->
+        <section class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4 shadow-xl">
             <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                <h2 class="text-md font-semibold text-slate-200">📅 Tutte le Partite (Palinsesto)</h2>
-                <span id="match-count" class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">0 match</span>
+                <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni di Valore</h2>
+                <span id="opp-count" class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">0 opportunità</span>
             </div>
-            <div id="matches-container" class="space-y-3">
-                <!-- Verrà popolato da JS -->
+            <div id="opportunities-container" class="space-y-3">
+                <!-- Popolato da JS -->
             </div>
         </section>
 
-        <!-- Sezione Occasioni -->
-        <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-lg">
-            <h2 class="text-md font-semibold text-emerald-400 mb-3 border-b border-slate-800 pb-2">🎯 Occasioni di Valore (Value Bets)</h2>
-            <div id="opportunities-container" class="space-y-2">
-                <div class="text-slate-500 italic text-sm">Nessuna occasione attiva al momento. Analisi in corso...</div>
+        <!-- Sezione Palinsesto -->
+        <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Tutte le Partite</h2>
+                <span id="match-count" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">0 match</span>
+            </div>
+            <div id="matches-container" class="space-y-3">
+                <!-- Popolato da JS -->
             </div>
         </section>
 
     </main>
 
-    <!-- Script di Logica Palinsesto -->
+    <!-- Footer -->
+    <footer class="border-t border-slate-900 text-center py-4 text-xs text-slate-600 font-mono">
+        Value Desk Engine v1.0 — Client-Side Architecture
+    </footer>
+
+    <!-- Logica JavaScript Completa -->
     <script>
-        // Dati di esempio realistici per il tennis
         const matchesData = [
             {
                 tournament: "ATP US Open",
@@ -48,7 +67,9 @@
                 player1: "J. Sinner",
                 player2: "C. Alcaraz",
                 odds1: 1.85,
-                odds2: 2.05
+                odds2: 2.05,
+                valueOn: "Player 2",
+                valuePercentage: "+4.2%"
             },
             {
                 tournament: "WTA Beijing",
@@ -56,7 +77,9 @@
                 player1: "I. Swiatek",
                 player2: "A. Sabalenka",
                 odds1: 1.55,
-                odds2: 2.45
+                odds2: 2.45,
+                valueOn: null,
+                valuePercentage: null
             },
             {
                 tournament: "ATP Challenger Roma",
@@ -64,28 +87,73 @@
                 player1: "F. Cobolli",
                 player2: "L. Nardi",
                 odds1: 1.70,
-                odds2: 2.15
+                odds2: 2.15,
+                valueOn: "Player 1",
+                valuePercentage: "+6.8%"
             }
         ];
 
-        function renderPalinsesto() {
-            const container = document.getElementById('matches-container');
-            const countBadge = document.getElementById('match-count');
-            container.innerHTML = '';
-            
-            countBadge.textContent = `${matchesData.length} match`;
+        function renderApp(filterText = "") {
+            const matchesContainer = document.getElementById('matches-container');
+            const oppContainer = document.getElementById('opportunities-container');
+            const matchCount = document.getElementById('match-count');
+            const oppCount = document.getElementById('opp-count');
 
-            if (matchesData.length === 0) {
-                container.innerHTML = '<div class="text-slate-500 italic text-sm">Nessuna partita disponibile oggi.</div>';
+            matchesContainer.innerHTML = '';
+            oppContainer.innerHTML = '';
+
+            const query = filterText.toLowerCase();
+            const filteredData = matchesData.filter(m => 
+                m.player1.toLowerCase().includes(query) || 
+                m.player2.toLowerCase().includes(query) || 
+                m.tournament.toLowerCase().includes(query)
+            );
+
+            matchCount.textContent = `${filteredData.length} match`;
+
+            // Filtra le occasioni tra i dati filtrati
+            const opportunities = filteredData.filter(m => m.valueOn !== null);
+            oppCount.textContent = `${opportunities.length} opportunità`;
+
+            // Render Occasioni
+            if (opportunities.length === 0) {
+                oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna occasione attiva per la ricerca corrente.</div>';
+            } else {
+                opportunities.forEach(match => {
+                    const card = document.createElement('div');
+                    card.className = "bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3 hover:border-emerald-500/70 transition";
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
+                            <span class="font-medium text-emerald-400">${match.tournament}</span>
+                            <span class="font-mono bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded font-bold">${match.valuePercentage} Value</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm font-medium">
+                            <div class="space-y-1">
+                                <div>${match.player1} vs ${match.player2}</div>
+                                <div class="text-xs text-slate-400">Puntare su: <strong class="text-emerald-300">${match.valueOn === 'Player 1' ? match.player1 : match.player2}</strong></div>
+                            </div>
+                            <div class="flex gap-2 text-xs font-mono">
+                                <span class="bg-slate-900 border border-slate-700 px-2 py-1 rounded text-slate-300">1: ${match.odds1}</span>
+                                <span class="bg-slate-900 border border-slate-700 px-2 py-1 rounded text-slate-300">2: ${match.odds2}</span>
+                            </div>
+                        </div>
+                    `;
+                    oppContainer.appendChild(card);
+                });
+            }
+
+            // Render Palinsesto
+            if (filteredData.length === 0) {
+                matchesContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna partita trovata.</div>';
                 return;
             }
 
-            matchesData.forEach(match => {
+            filteredData.forEach(match => {
                 const card = document.createElement('div');
-                card.className = "bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 hover:border-slate-600 transition";
+                card.className = "bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 hover:border-slate-600 transition";
                 card.innerHTML = `
                     <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
-                        <span class="font-medium text-emerald-500">${match.tournament}</span>
+                        <span class="font-medium text-slate-300">${match.tournament}</span>
                         <span class="font-mono bg-slate-800 px-2 py-0.5 rounded">${match.time} CET</span>
                     </div>
                     <div class="flex justify-between items-center text-sm font-medium">
@@ -99,12 +167,16 @@
                         </div>
                     </div>
                 `;
-                container.appendChild(card);
+                matchesContainer.appendChild(card);
             });
         }
 
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            renderApp(e.target.value);
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
-            renderPalinsesto();
+            renderApp();
         });
     </script>
 </body>
