@@ -19,51 +19,92 @@
         
         <!-- Sezione Palinsesto -->
         <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-lg">
-            <h2 class="text-md font-semibold text-slate-200 mb-3 border-b border-slate-800 pb-2">📅 Tutte le Partite (Palinsesto)</h2>
-            <ul id="matches" class="space-y-2 text-sm text-slate-300">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                <h2 class="text-md font-semibold text-slate-200">📅 Tutte le Partite (Palinsesto)</h2>
+                <span id="match-count" class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">0 match</span>
+            </div>
+            <div id="matches-container" class="space-y-3">
                 <!-- Verrà popolato da JS -->
-            </ul>
+            </div>
         </section>
 
         <!-- Sezione Occasioni -->
         <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-lg">
-            <h2 class="text-md font-semibold text-emerald-400 mb-3 border-b border-slate-800 pb-2">🎯 Occasioni di Valore</h2>
-            <ul id="opportunities" class="space-y-2 text-sm text-slate-300">
-                <li class="text-slate-500 italic">Nessuna occasione disponibile al momento.</li>
-            </ul>
+            <h2 class="text-md font-semibold text-emerald-400 mb-3 border-b border-slate-800 pb-2">🎯 Occasioni di Valore (Value Bets)</h2>
+            <div id="opportunities-container" class="space-y-2">
+                <div class="text-slate-500 italic text-sm">Nessuna occasione attiva al momento. Analisi in corso...</div>
+            </div>
         </section>
 
     </main>
 
-    <!-- Script di Logica Pulito -->
+    <!-- Script di Logica Palinsesto -->
     <script>
+        // Dati di esempio realistici per il tennis
         const matchesData = [
-            { date: '2026-09-24', time: '15:30', opponent: 'John Doe' },
-            { date: '2026-09-25', time: '18:00', opponent: 'Jane Smith' }
+            {
+                tournament: "ATP US Open",
+                time: "17:30",
+                player1: "J. Sinner",
+                player2: "C. Alcaraz",
+                odds1: 1.85,
+                odds2: 2.05
+            },
+            {
+                tournament: "WTA Beijing",
+                time: "19:00",
+                player1: "I. Swiatek",
+                player2: "A. Sabalenka",
+                odds1: 1.55,
+                odds2: 2.45
+            },
+            {
+                tournament: "ATP Challenger Roma",
+                time: "21:15",
+                player1: "F. Cobolli",
+                player2: "L. Nardi",
+                odds1: 1.70,
+                odds2: 2.15
+            }
         ];
 
-        function renderMatches() {
-            const matchesList = document.getElementById('matches');
-            matchesList.innerHTML = '';
+        function renderPalinsesto() {
+            const container = document.getElementById('matches-container');
+            const countBadge = document.getElementById('match-count');
+            container.innerHTML = '';
+            
+            countBadge.textContent = `${matchesData.length} match`;
 
             if (matchesData.length === 0) {
-                matchesList.innerHTML = '<li class="text-slate-500 italic">Dato non disponibile</li>';
+                container.innerHTML = '<div class="text-slate-500 italic text-sm">Nessuna partita disponibile oggi.</div>';
                 return;
             }
 
             matchesData.forEach(match => {
-                const li = document.createElement('li');
-                li.className = "bg-slate-800/50 p-2.5 rounded-lg border border-slate-700/50 flex justify-between items-center";
-                li.innerHTML = `
-                    <div><span class="font-medium text-white">${match.opponent}</span></div>
-                    <div class="text-xs text-emerald-400 font-mono">${match.date} - ${match.time}</div>
+                const card = document.createElement('div');
+                card.className = "bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 hover:border-slate-600 transition";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
+                        <span class="font-medium text-emerald-500">${match.tournament}</span>
+                        <span class="font-mono bg-slate-800 px-2 py-0.5 rounded">${match.time} CET</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm font-medium">
+                        <div class="space-y-1">
+                            <div>${match.player1}</div>
+                            <div class="text-slate-400">${match.player2}</div>
+                        </div>
+                        <div class="flex gap-2 text-xs font-mono">
+                            <span class="bg-slate-900 border border-slate-700 px-2 py-1 rounded text-slate-300">1: <strong>${match.odds1}</strong></span>
+                            <span class="bg-slate-900 border border-slate-700 px-2 py-1 rounded text-slate-300">2: <strong>${match.odds2}</strong></span>
+                        </div>
+                    </div>
                 `;
-                matchesList.appendChild(li);
+                container.appendChild(card);
             });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            renderMatches();
+            renderPalinsesto();
         });
     </script>
 </body>
