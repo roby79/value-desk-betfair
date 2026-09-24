@@ -1,94 +1,70 @@
-<script>
-function getMatches() {
-    var matches = [
-        {date: '2026-09-24', time: '15:30', opponent: 'John Doe'},
-        {date: '2026-09-25', time: '18:00', opponent: 'Jane Smith'}
-    ];
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Value Desk - Tennis Betting Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
 
-    var matchesList = document.getElementById('matches');
-    for (var i = 0; i < matches.length; i++) {
-        var match = matches[i];
-        var li = document.createElement('li');
-        li.textContent = 'Data: ' + match.date + ', Ora: ' + match.time + ', Avversario: ' + match.opponent;
-        matchesList.appendChild(li);
-    }
-}
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
+        <h1 class="text-lg font-bold tracking-wider text-emerald-400">VALUE DESK</h1>
+        <span class="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded">Live Client-Side</span>
+    </header>
 
-function updateMatches() {
-    var now = new Date();
-    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    var tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    <!-- Main Container -->
+    <main class="flex-1 max-w-4xl w-full mx-auto p-4 space-y-6">
+        
+        <!-- Sezione Palinsesto -->
+        <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-lg">
+            <h2 class="text-md font-semibold text-slate-200 mb-3 border-b border-slate-800 pb-2">📅 Tutte le Partite (Palinsesto)</h2>
+            <ul id="matches" class="space-y-2 text-sm text-slate-300">
+                <!-- Verrà popolato da JS -->
+            </ul>
+        </section>
 
-    var matchesList = document.getElementById('matches');
-    while (matchesList.firstChild) {
-        matchesList.removeChild(matchesList.firstChild);
-    }
+        <!-- Sezione Occasioni -->
+        <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-lg">
+            <h2 class="text-md font-semibold text-emerald-400 mb-3 border-b border-slate-800 pb-2">🎯 Occasioni di Valore</h2>
+            <ul id="opportunities" class="space-y-2 text-sm text-slate-300">
+                <li class="text-slate-500 italic">Nessuna occasione disponibile al momento.</li>
+            </ul>
+        </section>
 
-    for (var i = today; i <= tomorrow; i++) {
-        getMatches();
-    }
-}
+    </main>
 
- 1 | <script>
- 2 | function getMatches() {
- 3 |     var matches = [
- 4 |         {date: '2026-09-24', time: '15:30', opponent: 'John Doe'},
- 5 |         {date: '2026-09-25', time: '18:00', opponent: 'Jane Smith'}
- 6 |     ];
- 7 | 
- 8 |     var matchesList = document.getElementById('matches');
- 9 |     for (var i = 0; i < matches.length; i++) {
-10 |         var match = matches[i];
-11 |         var li = document.createElement('li');
-12 |         li.textContent = 'Data: ' + match.date + ', Ora: ' + match.time + ', Avversario: ' + match.opponent;
-13 |         matchesList.appendChild(li);
-14 |     }
-15 | }
-16 | 
-17 | function updateMatches() {
-18 |     var now = new Date();
-19 |     var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-20 |     var tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-21 | 
-22 |     var matchesList = document.getElementById('matches');
-23 |     while (matchesList.firstChild) {
-24 |         matchesList.removeChild(matchesList.firstChild);
-25 |     }
-26 | 
-27 |     for (var i = today; i <= tomorrow; i++) {
-28 |         getMatches();
-29 |     }
-30 | }
-31 | 
-32 | function convertToItalianTime(date) {
-33 |     var now = new Date();
-34 |     if (now > date) {
-35 |         return 'Data non disponibile';
-36 |     }
-37 |     var hours = date.getHours();
-38 |     var minutes = date.getMinutes();
-39 |     var amPm = hours >= 12 ? 'PM' : 'AM';
-40 |     hours = hours % 12;
-41 |     return hours + ':' + (minutes < 10 ? '0' : '') + minutes + amPm;
-42 | }
-43 | 
-44 | function updateMatches() {
-45 |     var now = new Date();
-46 |     var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-47 |     var tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-48 | 
-49 |     var matchesList = document.getElementById('matches');
-50 |     while (matchesList.firstChild) {
-51 |         matchesList.removeChild(matchesList.firstChild);
-52 |     }
-53 | 
-54 |     for (var i = today; i <= tomorrow; i++) {
-55 |         var match = {date: '2026-09-', time: convertToItalianTime(new Date(match.date)), opponent: 'Jane Smith'};
-56 |         getMatches();
-57 |     }
-58 | }
-59 | 
-60 | setInterval(updateMatches, 60 * 1000); // Update every minute
-61 | </script>
-setInterval(updateMatches, 60 * 1000); // Update every minute
-</script>
+    <!-- Script di Logica Pulito -->
+    <script>
+        const matchesData = [
+            { date: '2026-09-24', time: '15:30', opponent: 'John Doe' },
+            { date: '2026-09-25', time: '18:00', opponent: 'Jane Smith' }
+        ];
+
+        function renderMatches() {
+            const matchesList = document.getElementById('matches');
+            matchesList.innerHTML = '';
+
+            if (matchesData.length === 0) {
+                matchesList.innerHTML = '<li class="text-slate-500 italic">Dato non disponibile</li>';
+                return;
+            }
+
+            matchesData.forEach(match => {
+                const li = document.createElement('li');
+                li.className = "bg-slate-800/50 p-2.5 rounded-lg border border-slate-700/50 flex justify-between items-center";
+                li.innerHTML = `
+                    <div><span class="font-medium text-white">${match.opponent}</span></div>
+                    <div class="text-xs text-emerald-400 font-mono">${match.date} - ${match.time}</div>
+                `;
+                matchesList.appendChild(li);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMatches();
+        });
+    </script>
+</body>
+</html>
