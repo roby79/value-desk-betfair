@@ -1,143 +1,4 @@
-<!DOCTYPE html>
-<html lang="it" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Value Desk - Pro Tennis Value Betting Engine</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
-
-    <!-- Header & Navigation Tabs -->
-    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-2">
-            <h1 class="text-lg font-black tracking-wider text-emerald-400">VALUE DESK</h1>
-            <span class="text-xs text-slate-400 font-mono">| Pro Engine v2.0 (Multi-Elo & Net EV)</span>
-        </div>
-        <div class="flex gap-2">
-            <button onclick="switchTab('palinsesto')" id="btn-palinsesto" class="px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition">Palinsesto</button>
-            <button onclick="switchTab('occasioni')" id="btn-occasioni" class="px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition">Occasioni 🎯</button>
-            <button onclick="switchTab('giocate')" id="btn-giocate" class="px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition">Storico & ROI</button>
-        </div>
-    </header>
-
-    <!-- Main Container -->
-    <main class="flex-1 max-w-4xl w-full mx-auto p-4 space-y-6">
-        
-        <!-- TAB 1: PALINSESTO -->
-        <div id="tab-palinsesto" class="space-y-6">
-            <div class="relative">
-                <input type="text" id="search-input" placeholder="Cerca tennista, superficie o torneo..." 
-                    class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
-            </div>
-
-            <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl">
-                <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Palinsesto & Analisi Avanzata Multidimensionale</h2>
-                    <span id="match-count" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">0 match</span>
-                </div>
-                <div id="matches-container" class="space-y-4">
-                    <!-- Popolato da JS -->
-                </div>
-            </section>
-        </div>
-
-        <!-- TAB 2: OCCASIONI -->
-        <div id="tab-occasioni" class="space-y-6 hidden">
-            <section class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4 shadow-xl">
-                <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni di Valore Netto (&gt; 3% EV, Conf. &ge; 65)</h2>
-                    <span id="opp-count" class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">0 opportunità</span>
-                </div>
-                <div id="opportunities-container" class="space-y-4">
-                    <!-- Popolato da JS -->
-                </div>
-            </section>
-        </div>
-
-        <!-- TAB 3: GIOCATE & STORICO ROI -->
-        <div id="tab-giocate" class="space-y-6 hidden">
-            <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl space-y-4">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-emerald-400">📊 Storico Giocate, Utili e ROI (Netto Comm. 5%)</h2>
-                    <div class="text-xs font-mono text-slate-400">Cassa Iniziale: <strong class="text-white">€1,000.00</strong></div>
-                </div>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400">Totale Giocate</div>
-                        <div id="stats-total" class="text-lg font-bold font-mono text-white">0</div>
-                    </div>
-                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400">Stake Impegnato</div>
-                        <div id="stats-stake" class="text-lg font-bold font-mono text-emerald-400">€0.00</div>
-                    </div>
-                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400">Utile / Perdita Netto</div>
-                        <div id="stats-pl" class="text-lg font-bold font-mono text-emerald-400">€0.00</div>
-                    </div>
-                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400">ROI %</div>
-                        <div id="stats-roi" class="text-lg font-bold font-mono text-emerald-400">0.00%</div>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto pt-2">
-                    <table class="w-full text-left text-xs font-mono">
-                        <thead>
-                            <tr class="border-b border-slate-800 text-slate-400">
-                                <th class="pb-2">Match</th>
-                                <th class="pb-2">Scelta</th>
-                                <th class="pb-2">Quota Betfair</th>
-                                <th class="pb-2">Stake</th>
-                                <th class="pb-2">Esito</th>
-                                <th class="pb-2">Utile/Perdita Netto</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bets-table-body">
-                            <tr>
-                                <td colspan="6" class="py-4 text-center text-slate-500 italic">Nessuna giocata registrata.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
-
-    </main>
-
-    <!-- Modale Scommessa Betfair -->
-    <div id="bet-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                <h3 class="text-sm font-bold text-emerald-400">Piazza Giocata su Betfair</h3>
-                <button onclick="closeBetModal()" class="text-slate-400 hover:text-white text-sm font-bold">✕</button>
-            </div>
-            <div id="modal-match-info" class="text-xs text-slate-300 font-mono"></div>
-            
-            <div class="space-y-3 text-xs">
-                <div>
-                    <label class="block text-slate-400 mb-1">Lato / Selezione</label>
-                    <input type="text" id="modal-side" disabled class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-300 font-mono">
-                </div>
-                <div>
-                    <label class="block text-slate-400 mb-1">Quota Reale Betfair</label>
-                    <input type="number" id="modal-odds" step="0.01" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 font-mono">
-                </div>
-                <div>
-                    <label class="block text-slate-400 mb-1">Stake (€)</label>
-                    <input type="number" id="modal-stake" value="10" step="1" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 font-mono">
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
-                <button onclick="closeBetModal()" class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">Annulla</button>
-                <button onclick="confirmBet()" class="px-4 py-1.5 rounded bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400">Conferma e Invia allo Storico</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Script con Motore Pro v2.0 -->
+<!-- Script con Motore Pro v2.1 (Calibrazione e Smorzamento Realistico) -->
     <script>
         let matchesData = [
             {
@@ -148,24 +9,24 @@
                 time: "14:00 CET",
                 player1: "J. Menesch",
                 rank1: 35,
-                odds1: 2.20,
-                eloOverall1: 1880,
-                eloSurface1: 1940,
-                eloRecent1: 1910,
-                surfaceMatchesCount1: 22, // Campione elevato sulla superficie (>20)
-                sosRecent1: 45,            // Strength of schedule medio avversari
-                gameWinAvg1: 54.5,
-                form1: ["V", "V", "V", "S"],
+                odds1: 2.10, // Quota leggermente ritoccata per test realistico
+                eloOverall1: 1850,
+                eloSurface1: 1865,
+                eloRecent1: 1860,
+                surfaceMatchesCount1: 22,
+                sosRecent1: 45,
+                gameWinAvg1: 52.0, // Valori realistici vicini al 50%
+                form1: ["V", "V", "S", "V"],
                 player2: "T. Etcheverry",
                 rank2: 32,
-                odds2: 1.65,
+                odds2: 1.80,
                 eloOverall2: 1860,
-                eloSurface2: 1830,
-                eloRecent2: 1845,
-                surfaceMatchesCount2: 12,
-                sosRecent2: 50,
-                gameWinAvg2: 48.0,
-                form2: ["V", "S", "S", "V"]
+                eloSurface2: 1855,
+                eloRecent2: 1858,
+                surfaceMatchesCount2: 18,
+                sosRecent2: 48,
+                gameWinAvg2: 50.5,
+                form2: ["V", "S", "V", "S"]
             },
             {
                 id: 102,
@@ -175,23 +36,23 @@
                 time: "16:30 CET",
                 player1: "M. Andreeva",
                 rank1: 15,
-                odds1: 1.62,
-                eloOverall1: 1920,
-                eloSurface1: 1980,
-                eloRecent1: 1950,
-                surfaceMatchesCount1: 8,
+                odds1: 1.72,
+                eloOverall1: 1900,
+                eloSurface1: 1920,
+                eloRecent1: 1910,
+                surfaceMatchesCount1: 12,
                 sosRecent1: 38,
-                gameWinAvg1: 56.0,
+                gameWinAvg1: 53.5,
                 form1: ["V", "V", "V", "S"],
                 player2: "L. Fernandez",
                 rank2: 28,
-                odds2: 2.30,
-                eloOverall2: 1800,
-                eloSurface2: 1770,
-                eloRecent2: 1790,
-                surfaceMatchesCount2: 4, // Campione basso (<5), attiva shrinkage
-                sosRecent2: 65,
-                gameWinAvg2: 49.2,
+                odds2: 2.15,
+                eloOverall2: 1840,
+                eloSurface2: 1820,
+                eloRecent2: 1830,
+                surfaceMatchesCount2: 10,
+                sosRecent2: 42,
+                gameWinAvg2: 49.0,
                 form2: ["V", "S", "V", "S"]
             }
         ];
@@ -209,28 +70,19 @@
             document.getElementById('btn-giocate').className = tab === 'giocate' ? 'px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition' : 'px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition';
         }
 
-        // 1. Calcolo Elo Effettivo con Blend Dinamico basato sul campione di superficie
         function getEffectiveElo(surfaceElo, overallElo, recentElo, surfaceCount) {
-            let w_surface = 0.20, w_overall = 0.55, w_recent = 0.25;
-            if (surfaceCount >= 5 && surfaceCount <= 9) {
-                w_surface = 0.40; w_overall = 0.40; w_recent = 0.20;
-            } else if (surfaceCount >= 10 && surfaceCount <= 19) {
-                w_surface = 0.60; w_overall = 0.25; w_recent = 0.15;
-            } else if (surfaceCount >= 20) {
-                w_surface = 0.70; w_overall = 0.15; w_recent = 0.15;
+            let w_surface = 0.50, w_overall = 0.30, w_recent = 0.20;
+            if (surfaceCount < 5) {
+                w_surface = 0.20; w_overall = 0.60; w_recent = 0.20; // Shrinkage se pochi dati
             }
             return (w_surface * surfaceElo) + (w_overall * overallElo) + (w_recent * recentElo);
         }
 
-        // 2. Calcolo Confidence Score (0-100)
         function calculateConfidenceScore(surfaceCount, gameWinAvg, tier) {
             let score = 70;
             if (surfaceCount < 5) score -= 15;
             else if (surfaceCount >= 15) score += 10;
-            
             if (tier.includes('1000') || tier.includes('Slam')) score += 5;
-            if (gameWinAvg > 0) score += 5;
-            
             return Math.min(Math.max(score, 40), 95);
         }
 
@@ -241,19 +93,24 @@
 
         function processMatches() {
             return matchesData.map(match => {
-                // Elo effettivo combinato
                 const effElo1 = getEffectiveElo(match.eloSurface1, match.eloOverall1, match.eloRecent1, match.surfaceMatchesCount1);
                 const effElo2 = getEffectiveElo(match.eloSurface2, match.eloOverall2, match.eloRecent2, match.surfaceMatchesCount2);
 
-                // Correzione basata su game vinti ed efficienza
-                const score1 = effElo1 + ((match.gameWinAvg1 - 50) * 15);
-                const score2 = effElo2 + ((match.gameWinAvg2 - 50) * 15);
+                // Differenza Elo pura
+                const eloDiff = effElo1 - effElo2;
 
-                // Probabilità modello Elo
-                const probElo1 = 1 / (1 + Math.pow(10, (score2 - score1) / 400));
+                // Aggiunta controllata dell'efficienza sui game (smorzata per evitare percentuali folli)
+                const gameDiff = (match.gameWinAvg1 - match.gameWinAvg2) * 2.5; 
+                const totalScoreDiff = eloDiff + gameDiff;
+
+                // Conversione in probabilità con fattore di scala professionale (400 standard, diviso per smorzare estremi)
+                const rawProb1 = 1 / (1 + Math.pow(10, -totalScoreDiff / 450));
+                
+                // Applicazione di un ulteriore shrinkage verso il 50% (evita overconfidence del modello)
+                const damping = 0.85; 
+                const probElo1 = 0.5 + (rawProb1 - 0.5) * damping;
                 const probElo2 = 1 - probElo1;
 
-                // Quota netta e probabilità di mercato no-vig
                 const netOdds1 = getNetOdds(match.odds1);
                 const netOdds2 = getNetOdds(match.odds2);
                 const rawMarket1 = 1 / netOdds1;
@@ -261,7 +118,6 @@
                 const marketNoVig1 = rawMarket1 / (rawMarket1 + rawMarket2);
                 const marketNoVig2 = rawMarket2 / (rawMarket1 + rawMarket2);
 
-                // Edge netto e Net EV
                 const netEdge1 = probElo1 - marketNoVig1;
                 const netEdge2 = probElo2 - marketNoVig2;
 
@@ -276,7 +132,6 @@
                 let recommendedSide = "";
                 let recommendedOdds = 0;
 
-                // Criterio di ammissione: Net EV >= 3% e Confidence >= 65
                 if (netEv1 >= 0.03 && netEdge1 >= 0.02 && confidence1 >= 65) {
                     valueOn = match.player1;
                     bestEv = (netEv1 * 100).toFixed(1);
@@ -310,7 +165,6 @@
         function openBetModal(matchId, sideText, defaultOdds) {
             const match = matchesData.find(m => m.id === matchId);
             if (!match) return;
-
             activeBetContext = { matchId, sideText };
             document.getElementById('modal-match-info').textContent = `${match.tournament} [${match.surface}] (${match.time}): ${match.player1} vs ${match.player2}`;
             document.getElementById('modal-side').value = sideText;
@@ -328,12 +182,10 @@
             const match = matchesData.find(m => m.id === activeBetContext.matchId);
             const odds = parseFloat(document.getElementById('modal-odds').value);
             const stake = parseFloat(document.getElementById('modal-stake').value);
-
             if (!odds || odds <= 1 || !stake || stake <= 0) {
                 alert("Inserisci quota e stake validi.");
                 return;
             }
-
             placedBets.push({
                 id: Date.now(),
                 match: `${match.player1} vs ${match.player2} (${match.surface})`,
@@ -343,7 +195,6 @@
                 status: 'In Corso',
                 pnl: 0
             });
-
             closeBetModal();
             switchTab('giocate');
             updateGiocateTab();
@@ -352,11 +203,10 @@
         function updateMatchStatus(betId, newStatus) {
             const target = placedBets.find(b => b.id === betId);
             if (!target) return;
-
             target.status = newStatus;
             if (newStatus === 'Vinta') {
                 const grossProfit = target.stake * (target.odds - 1);
-                target.pnl = grossProfit * 0.95; // Commissione 5% Betfair
+                target.pnl = grossProfit * 0.95;
             } else if (newStatus === 'Persa') {
                 target.pnl = -target.stake;
             } else {
@@ -368,25 +218,20 @@
         function updateGiocateTab() {
             const tbody = document.getElementById('bets-table-body');
             document.getElementById('stats-total').textContent = placedBets.length;
-            
             const totalStake = placedBets.reduce((acc, b) => acc + b.stake, 0);
             const totalPnL = placedBets.reduce((acc, b) => acc + b.pnl, 0);
             const roi = totalStake > 0 ? (totalPnL / totalStake) * 100 : 0;
-
             document.getElementById('stats-stake').textContent = `€${totalStake.toFixed(2)}`;
             const plElem = document.getElementById('stats-pl');
             plElem.textContent = `€${totalPnL.toFixed(2)}`;
             plElem.className = `text-lg font-bold font-mono ${totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-
             const roiElem = document.getElementById('stats-roi');
             roiElem.textContent = `${roi.toFixed(2)}%`;
             roiElem.className = `text-lg font-bold font-mono ${roi >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-
             if (placedBets.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500 italic">Nessuna giocata registrata.</td></tr>`;
                 return;
             }
-
             tbody.innerHTML = placedBets.map(b => `
                 <tr class="border-b border-slate-800/50 hover:bg-slate-900/40">
                     <td class="py-2.5">${b.match}</td>
@@ -416,7 +261,6 @@
 
             const processed = processMatches();
             const query = filterText.toLowerCase();
-
             const filteredData = processed.filter(m => 
                 m.player1.toLowerCase().includes(query) || 
                 m.player2.toLowerCase().includes(query) || 
@@ -425,11 +269,9 @@
             );
 
             matchCount.textContent = `${filteredData.length} match`;
-
             const opportunities = filteredData.filter(m => m.valueOn !== null);
             oppCount.textContent = `${opportunities.length} opportunità`;
 
-            // Render Tab Occasioni
             if (opportunities.length === 0) {
                 oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna occasione con Net EV >= 3% e Confidence >= 65.</div>';
             } else {
@@ -453,7 +295,6 @@
                 });
             }
 
-            // Render Tab Palinsesto Pro v2.0
             filteredData.forEach(match => {
                 const isVal1 = parseFloat(match.netEv1) >= 3.0 && match.confidence1 >= 65;
                 const isVal2 = parseFloat(match.netEv2) >= 3.0 && match.confidence2 >= 65;
@@ -479,7 +320,7 @@
                             <div class="flex justify-between items-start">
                                 <div>
                                     <div class="font-bold text-white">${match.player1} <span class="text-xs text-slate-400 font-normal">(Rank ${match.rank1})</span> <span class="font-mono text-emerald-400 text-xs ml-1">(Q. ${match.odds1})</span></div>
-                                    <div class="text-xs text-slate-400 mt-0.5">Conf: <span class="font-mono text-emerald-300">${match.confidence1}/100</span> | SOS: <span class="font-mono text-slate-200">${match.sosRecent1}</span></div>
+                                    <div class="text-xs text-slate-400 mt-0.5">Conf: <span class="font-mono text-emerald-300">${match.confidence1}/100</span> | SOS: <span class="font-mono text-slate-200">${match.sosRecent1 || 45}</span></div>
                                 </div>
                                 <div>${badge1}</div>
                             </div>
@@ -493,7 +334,7 @@
                             <div class="flex justify-between items-start">
                                 <div>
                                     <div class="font-bold text-white">${match.player2} <span class="text-xs text-slate-400 font-normal">(Rank ${match.rank2})</span> <span class="font-mono text-emerald-400 text-xs ml-1">(Q. ${match.odds2})</span></div>
-                                    <div class="text-xs text-slate-400 mt-0.5">Conf: <span class="font-mono text-emerald-300">${match.confidence2}/100</span> | SOS: <span class="font-mono text-slate-200">${match.sosRecent2}</span></div>
+                                    <div class="text-xs text-slate-400 mt-0.5">Conf: <span class="font-mono text-emerald-300">${match.confidence2}/100</span> | SOS: <span class="font-mono text-slate-200">${match.sosRecent2 || 48}</span></div>
                                 </div>
                                 <div>${badge2}</div>
                             </div>
@@ -516,5 +357,3 @@
             renderApp();
         });
     </script>
-</body>
-</html>
