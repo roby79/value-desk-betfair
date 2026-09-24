@@ -1,4 +1,143 @@
-<!-- Script con Motore Pro v2.1 (Calibrazione e Smorzamento Realistico) -->
+<!DOCTYPE html>
+<html lang="it" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Value Desk - Pro Tennis Value Betting Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+
+    <!-- Header & Navigation Tabs -->
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <h1 class="text-lg font-black tracking-wider text-emerald-400">VALUE DESK</h1>
+            <span class="text-xs text-slate-400 font-mono">| Pro Engine v2.1 (Calibrated)</span>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="switchTab('palinsesto')" id="btn-palinsesto" class="px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition">Palinsesto</button>
+            <button onclick="switchTab('occasioni')" id="btn-occasioni" class="px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition">Occasioni 🎯</button>
+            <button onclick="switchTab('giocate')" id="btn-giocate" class="px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition">Storico & ROI</button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-4xl w-full mx-auto p-4 space-y-6">
+        
+        <!-- TAB 1: PALINSESTO -->
+        <div id="tab-palinsesto" class="space-y-6">
+            <div class="relative">
+                <input type="text" id="search-input" placeholder="Cerca tennista, superficie o torneo..." 
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
+            </div>
+
+            <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                    <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Palinsesto & Analisi Avanzata Calibrata</h2>
+                    <span id="match-count" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">0 match</span>
+                </div>
+                <div id="matches-container" class="space-y-4">
+                    <!-- Popolato da JS -->
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB 2: OCCASIONI -->
+        <div id="tab-occasioni" class="space-y-6 hidden">
+            <section class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni di Valore Netto (&gt; 3% EV, Conf. &ge; 65)</h2>
+                    <span id="opp-count" class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">0 opportunità</span>
+                </div>
+                <div id="opportunities-container" class="space-y-4">
+                    <!-- Popolato da JS -->
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB 3: GIOCATE & STORICO ROI -->
+        <div id="tab-giocate" class="space-y-6 hidden">
+            <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h2 class="text-md font-semibold text-emerald-400">📊 Storico Giocate, Utili e ROI (Netto Comm. 5%)</h2>
+                    <div class="text-xs font-mono text-slate-400">Cassa Iniziale: <strong class="text-white">€1,000.00</strong></div>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
+                        <div class="text-xs text-slate-400">Totale Giocate</div>
+                        <div id="stats-total" class="text-lg font-bold font-mono text-white">0</div>
+                    </div>
+                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
+                        <div class="text-xs text-slate-400">Stake Impegnato</div>
+                        <div id="stats-stake" class="text-lg font-bold font-mono text-emerald-400">€0.00</div>
+                    </div>
+                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
+                        <div class="text-xs text-slate-400">Utile / Perdita Netto</div>
+                        <div id="stats-pl" class="text-lg font-bold font-mono text-emerald-400">€0.00</div>
+                    </div>
+                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
+                        <div class="text-xs text-slate-400">ROI %</div>
+                        <div id="stats-roi" class="text-lg font-bold font-mono text-emerald-400">0.00%</div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto pt-2">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400">
+                                <th class="pb-2">Match</th>
+                                <th class="pb-2">Scelta</th>
+                                <th class="pb-2">Quota Betfair</th>
+                                <th class="pb-2">Stake</th>
+                                <th class="pb-2">Esito</th>
+                                <th class="pb-2">Utile/Perdita Netto</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bets-table-body">
+                            <tr>
+                                <td colspan="6" class="py-4 text-center text-slate-500 italic">Nessuna giocata registrata.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- Modale Scommessa Betfair -->
+    <div id="bet-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="text-sm font-bold text-emerald-400">Piazza Giocata su Betfair</h3>
+                <button onclick="closeBetModal()" class="text-slate-400 hover:text-white text-sm font-bold">✕</button>
+            </div>
+            <div id="modal-match-info" class="text-xs text-slate-300 font-mono"></div>
+            
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Lato / Selezione</label>
+                    <input type="text" id="modal-side" disabled class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-300 font-mono">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Quota Reale Betfair</label>
+                    <input type="number" id="modal-odds" step="0.01" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 font-mono">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Stake (€)</label>
+                    <input type="number" id="modal-stake" value="10" step="1" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 font-mono">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                <button onclick="closeBetModal()" class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">Annulla</button>
+                <button onclick="confirmBet()" class="px-4 py-1.5 rounded bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400">Conferma e Invia allo Storico</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Logica -->
     <script>
         let matchesData = [
             {
@@ -9,13 +148,13 @@
                 time: "14:00 CET",
                 player1: "J. Menesch",
                 rank1: 35,
-                odds1: 2.10, // Quota leggermente ritoccata per test realistico
+                odds1: 2.10,
                 eloOverall1: 1850,
                 eloSurface1: 1865,
                 eloRecent1: 1860,
                 surfaceMatchesCount1: 22,
                 sosRecent1: 45,
-                gameWinAvg1: 52.0, // Valori realistici vicini al 50%
+                gameWinAvg1: 52.0,
                 form1: ["V", "V", "S", "V"],
                 player2: "T. Etcheverry",
                 rank2: 32,
@@ -73,7 +212,7 @@
         function getEffectiveElo(surfaceElo, overallElo, recentElo, surfaceCount) {
             let w_surface = 0.50, w_overall = 0.30, w_recent = 0.20;
             if (surfaceCount < 5) {
-                w_surface = 0.20; w_overall = 0.60; w_recent = 0.20; // Shrinkage se pochi dati
+                w_surface = 0.20; w_overall = 0.60; w_recent = 0.20;
             }
             return (w_surface * surfaceElo) + (w_overall * overallElo) + (w_recent * recentElo);
         }
@@ -87,7 +226,7 @@
         }
 
         function getNetOdds(odds) {
-            const netProfit = (odds - 1) * 0.95; // Commissione 5% Betfair
+            const netProfit = (odds - 1) * 0.95;
             return 1 + netProfit;
         }
 
@@ -96,17 +235,11 @@
                 const effElo1 = getEffectiveElo(match.eloSurface1, match.eloOverall1, match.eloRecent1, match.surfaceMatchesCount1);
                 const effElo2 = getEffectiveElo(match.eloSurface2, match.eloOverall2, match.eloRecent2, match.surfaceMatchesCount2);
 
-                // Differenza Elo pura
                 const eloDiff = effElo1 - effElo2;
-
-                // Aggiunta controllata dell'efficienza sui game (smorzata per evitare percentuali folli)
                 const gameDiff = (match.gameWinAvg1 - match.gameWinAvg2) * 2.5; 
                 const totalScoreDiff = eloDiff + gameDiff;
 
-                // Conversione in probabilità con fattore di scala professionale (400 standard, diviso per smorzare estremi)
                 const rawProb1 = 1 / (1 + Math.pow(10, -totalScoreDiff / 450));
-                
-                // Applicazione di un ulteriore shrinkage verso il 50% (evita overconfidence del modello)
                 const damping = 0.85; 
                 const probElo1 = 0.5 + (rawProb1 - 0.5) * damping;
                 const probElo2 = 1 - probElo1;
@@ -357,3 +490,5 @@
             renderApp();
         });
     </script>
+</body>
+</html>
