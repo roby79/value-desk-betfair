@@ -3,138 +3,288 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Value Desk - Elo & Value Betting Analysis</title>
+    <title>Value Desk - Tennis Elo Strategy</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
 
     <!-- Header -->
-    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
-        <h1 class="text-lg font-black tracking-wider text-emerald-400">VALUE DESK</h1>
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-2">
-            <span class="relative flex h-2 w-2">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span class="text-xs text-slate-400 font-mono">ELO ENGINE</span>
+            <h1 class="text-lg font-black tracking-wider text-emerald-400">VALUE DESK</h1>
+            <span class="text-xs text-slate-400 font-mono">| Filtro 1.50 - 3.00</span>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="switchTab('palinsesto')" id="btn-palinsesto" class="px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition">Palinsesto & Analisi</button>
+            <button onclick="switchTab('giocate')" id="btn-giocate" class="px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition">Giocate & ROI</button>
         </div>
     </header>
 
     <!-- Main Container -->
     <main class="flex-1 max-w-4xl w-full mx-auto p-4 space-y-6">
         
-        <!-- Barra di Ricerca -->
-        <div class="relative">
-            <input type="text" id="search-input" placeholder="Cerca tennista o torneo..." 
-                class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
+        <!-- TAB PALINSESTO & ANALISI -->
+        <div id="tab-palinsesto" class="space-y-6">
+            
+            <!-- Barra di Ricerca -->
+            <div class="relative">
+                <input type="text" id="search-input" placeholder="Cerca tennista o torneo nel palinsesto odierno..." 
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
+            </div>
+
+            <!-- Occasioni di Valore (Elo vs Quota Book) -->
+            <section class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni di Valore (Edge &gt; 3%)</h2>
+                    <span id="opp-count" class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">0 opportunità</span>
+                </div>
+                <div id="opportunities-container" class="space-y-3">
+                    <!-- Popolato da JS -->
+                </div>
+            </section>
+
+            <!-- Palinsesto Odierno con Analisi Ultime 5 Partite -->
+            <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                    <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Palinsesto Odierno (Quote Favorite 1.50 - 3.00)</h2>
+                    <span id="match-count" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">0 match</span>
+                </div>
+                <div id="matches-container" class="space-y-4">
+                    <!-- Popolato da JS -->
+                </div>
+            </section>
         </div>
 
-        <!-- Sezione Occasioni (Confronto Elo vs Quote) -->
-        <section class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4 shadow-xl">
-            <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Occasioni di Valore (Elo vs Quota)</h2>
-                <span id="opp-count" class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">0 opportunità</span>
-            </div>
-            <div id="opportunities-container" class="space-y-3">
-                <!-- Popolato da JS -->
-            </div>
-        </section>
+        <!-- TAB GIOCATE & ROI -->
+        <div id="tab-giocate" class="space-y-6 hidden">
+            <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h2 class="text-md font-semibold text-emerald-400">📊 Storico Giocate, Utili e ROI</h2>
+                    <div class="text-xs font-mono text-slate-400">Cassa Iniziale: <strong class="text-white">€1,000.00</strong></div>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
+                        <div class="text-xs text-slate-400">Totale Giocate</div>
+                        <div id="stats-total" class="text-lg font-bold font-mono text-white">0</div>
+                    </div>
+                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
+                        <div class="text-xs text-slate-400">Stake Impegnato</div>
+                        <div id="stats-stake" class="text-lg font-bold font-mono text-emerald-400">€0.00</div>
+                    </div>
+                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
+                        <div class="text-xs text-slate-400">Profitto / Perdita</div>
+                        <div id="stats-pl" class="text-lg font-bold font-mono text-emerald-400">€0.00</div>
+                    </div>
+                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
+                        <div class="text-xs text-slate-400">ROI %</div>
+                        <div id="stats-roi" class="text-lg font-bold font-mono text-emerald-400">0.00%</div>
+                    </div>
+                </div>
 
-        <!-- Sezione Palinsesto Giornaliero -->
-        <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl">
-            <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Palinsesto Odierno (Match da disputare)</h2>
-                <span id="match-count" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">0 match</span>
-            </div>
-            <div id="matches-container" class="space-y-3">
-                <!-- Popolato da JS -->
-            </div>
-        </section>
+                <div class="overflow-x-auto pt-2">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400">
+                                <th class="pb-2">Match</th>
+                                <th class="pb-2">Scelta</th>
+                                <th class="pb-2">Quota Betfair</th>
+                                <th class="pb-2">Stake</th>
+                                <th class="pb-2">Esito</th>
+                                <th class="pb-2">Azione</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bets-table-body">
+                            <tr>
+                                <td colspan="6" class="py-4 text-center text-slate-500 italic">Nessuna giocata registrata.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
 
     </main>
 
-    <!-- Footer -->
-    <footer class="border-t border-slate-900 text-center py-4 text-xs text-slate-600 font-mono">
-        Value Desk & Elo Analysis Engine — Client-Side
-    </footer>
-
-    <!-- Logica Calcolo Elo & Value -->
+    <!-- Script di Logica -->
     <script>
-        // Dataset con Elo Ratings dei tennisti e quote dei bookmaker
-        const matchesData = [
+        // Partite odierne con quote comprese tra 1.50 e 3.00 per il favorito
+        let matchesData = [
             {
-                tournament: "ATP US Open",
-                time: "17:30",
-                player1: "J. Sinner",
-                elo1: 2150,
-                player2: "C. Alcaraz",
-                elo2: 2120,
-                odds1: 1.85,
-                odds2: 2.05
+                id: 101,
+                tournament: "ATP Masters Shanghai",
+                time: "14:00 CET",
+                player1: "J. Menesch",
+                form1: ["V", "V", "S", "V", "V"], // Ultime 5
+                elo1: 1950,
+                odds1: 1.75, // Implicita 57.1%
+                player2: "T. Etcheverry",
+                form2: ["S", "S", "V", "S", "V"],
+                elo2: 1820,
+                odds2: 2.10
             },
             {
-                tournament: "WTA Beijing",
-                time: "19:00",
-                player1: "I. Swiatek",
-                elo1: 2080,
-                player2: "A. Sabalenka",
-                elo2: 2010,
-                odds1: 1.55,
-                odds2: 2.45
+                id: 102,
+                tournament: "WTA Wuhan",
+                time: "16:30 CET",
+                player1: "M. Andreeva",
+                form1: ["V", "V", "V", "S", "V"],
+                elo1: 1910,
+                odds1: 1.62, // Implicita 61.7%
+                player2: "L. Fernandez",
+                form2: ["V", "S", "V", "S", "S"],
+                elo2: 1800,
+                odds2: 2.30
             },
             {
-                tournament: "ATP Challenger Roma",
-                time: "21:15",
-                player1: "F. Cobolli",
-                elo1: 1850,
-                player2: "L. Nardi",
-                elo2: 1810,
-                odds1: 1.70,
-                odds2: 2.15
+                id: 103,
+                tournament: "ATP Challenger Valencia",
+                time: "18:00 CET",
+                player1: "D. Goffin",
+                form1: ["S", "V", "S", "V", "S"],
+                elo1: 1780,
+                odds2: 2.40, 
+                player2: "H. Mayot",
+                form2: ["V", "V", "V", "V", "S"],
+                elo2: 1840,
+                odds1: 1.60  // Quota favorita su Mayot (1.60)
             }
         ];
 
-        // Funzione per calcolare la probabilità Elo (formula standard)
+        let placedBets = [];
+
+        function switchTab(tab) {
+            document.getElementById('tab-palinsesto').classList.toggle('hidden', tab !== 'palinsesto');
+            document.getElementById('tab-giocate').classList.toggle('hidden', tab !== 'giocate');
+            document.getElementById('btn-palinsesto').className = tab === 'palinsesto' ? 'px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition' : 'px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition';
+            document.getElementById('btn-giocate').className = tab === 'giocate' ? 'px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition' : 'px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition';
+        }
+
         function calculateEloProbability(eloA, eloB) {
             return 1 / (1 + Math.pow(10, (eloB - eloA) / 400));
         }
 
         function processMatches() {
             return matchesData.map(match => {
-                // Probabilità Elo in percentuale
-                const prob1 = calculateEloProbability(match.elo1, match.elo2);
-                const prob2 = 1 - prob1;
+                // Probabilità Elo
+                const probElo1 = calculateEloProbability(match.elo1, match.elo2);
+                const probElo2 = 1 - probElo1;
 
-                // Probabilità implicita delle quote (rimuovendo circa il margine o usando 1/quota)
-                const implied1 = 1 / match.odds1;
-                const implied2 = 1 / match.odds2;
+                // Probabilità Implicita del Bookmakers dalle quote
+                const probBook1 = 1 / match.odds1;
+                const probBook2 = 1 / match.odds2;
 
-                // Differenziale di valore (EloProb - ImpliedProb)
-                const diff1 = prob1 - implied1;
-                const diff2 = prob2 - implied2;
+                // Differenziale (Edge)
+                const diff1 = probElo1 - probBook1;
+                const diff2 = probElo2 - probBook2;
 
                 let valueOn = null;
-                let valuePercentage = 0;
+                let edgeValue = 0;
 
-                // Soglia minima di vantaggio per considerare la value bet (es. +2.5%)
-                const threshold = 0.025; 
-
+                const threshold = 0.03; // 3% di margine minimo
                 if (diff1 > threshold) {
                     valueOn = match.player1;
-                    valuePercentage = (diff1 * 100).toFixed(1);
+                    edgeValue = (diff1 * 100).toFixed(1);
                 } else if (diff2 > threshold) {
                     valueOn = match.player2;
-                    valuePercentage = (diff2 * 100).toFixed(1);
+                    edgeValue = (diff2 * 100).toFixed(1);
                 }
 
                 return {
                     ...match,
-                    prob1: (prob1 * 100).toFixed(1),
-                    prob2: (prob2 * 100).toFixed(1),
+                    probElo1: (probElo1 * 100).toFixed(1),
+                    probElo2: (probElo2 * 100).toFixed(1),
+                    probBook1: (probBook1 * 100).toFixed(1),
+                    probBook2: (probBook2 * 100).toFixed(1),
                     valueOn,
-                    valuePercentage: valuePercentage > 0 ? `+${valuePercentage}%` : null
+                    edgeValue: edgeValue > 0 ? `+${edgeValue}%` : null
                 };
             });
+        }
+
+        function addBetToSlip(matchId) {
+            const match = matchesData.find(m => m.id === matchId);
+            const betInputVal = document.getElementById(`bet-input-${matchId}`).value;
+            const sideSelect = document.getElementById(`side-select-${matchId}`).value;
+            const stakeInputVal = parseFloat(document.getElementById(`stake-input-${matchId}`).value) || 10.00;
+
+            const realOdds = parseFloat(betInputVal);
+            if (!realOdds || realOdds <= 1) {
+                alert("Inserisci una quota reale Betfair valida!");
+                return;
+            }
+
+            const chosenPlayer = sideSelect === '1' ? match.player1 : match.player2;
+            
+            placedBets.push({
+                id: Date.now(),
+                match: `${match.player1} vs ${match.player2}`,
+                side: `${sideSelect === '1' ? 'Punta' : 'Punta'} ${chosenPlayer}`,
+                odds: realOdds,
+                stake: stakeInputVal,
+                status: 'In Corso',
+                pnl: 0
+            });
+
+            alert("Giocata registrata con successo nella scheda Giocate & ROI!");
+            updateGiocateTab();
+        }
+
+        function updateMatchStatus(betId, newStatus) {
+            const bet = placedBets.push ? placedBets.find(b => b.id === betId) : null;
+            // find bet
+            const target = placedBets.find(b => b.id === betId);
+            if (!target) return;
+
+            target.status = newStatus;
+            if (newStatus === 'Vinta') {
+                target.pnl = target.stake * (target.odds - 1);
+            } else if (newStatus === 'Persa') {
+                target.pnl = -target.stake;
+            } else {
+                target.pnl = 0;
+            }
+            updateGiocateTab();
+        }
+
+        function updateGiocateTab() {
+            const tbody = document.getElementById('bets-table-body');
+            document.getElementById('stats-total').textContent = placedBets.length;
+            
+            const totalStake = placedBets.reduce((acc, b) => acc + b.stake, 0);
+            const totalPnL = placedBets.reduce((acc, b) => acc + b.pnl, 0);
+            const roi = totalStake > 0 ? (totalPnL / totalStake) * 100 : 0;
+
+            document.getElementById('stats-stake').textContent = `€${totalStake.toFixed(2)}`;
+            const plElem = document.getElementById('stats-pl');
+            plElem.textContent = `€${totalPnL.toFixed(2)}`;
+            plElem.className = `text-lg font-bold font-mono ${totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+
+            const roiElem = document.getElementById('stats-roi');
+            roiElem.textContent = `${roi.toFixed(2)}%`;
+            roiElem.className = `text-lg font-bold font-mono ${roi >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+
+            if (placedBets.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500 italic">Nessuna giocata registrata.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = placedBets.map(b => `
+                <tr class="border-b border-slate-800/50 hover:bg-slate-900/40">
+                    <td class="py-2.5">${b.match}</td>
+                    <td class="py-2.5 text-emerald-400">${b.side}</td>
+                    <td class="py-2.5 font-bold">€${b.odds.toFixed(2)}</td>
+                    <td class="py-2.5">€${b.stake.toFixed(2)}</td>
+                    <td class="py-2.5">
+                        <select onchange="updateMatchStatus(${b.id}, this.value)" class="bg-slate-900 border border-slate-700 text-xs rounded px-1.5 py-0.5 text-slate-200">
+                            <option value="In Corso" ${b.status === 'In Corso' ? 'selected' : ''}>In Corso</option>
+                            <option value="Vinta" ${b.status === 'Vinta' ? 'selected' : ''}>Vinta</option>
+                            <option value="Persa" ${b.status === 'Persa' ? 'selected' : ''}>Persa</option>
+                        </select>
+                    </td>
+                    <td class="py-2.5 font-bold ${b.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">€${b.pnl.toFixed(2)}</td>
+                </tr>
+            `).join('');
         }
 
         function renderApp(filterText = "") {
@@ -149,6 +299,7 @@
             const processed = processMatches();
             const query = filterText.toLowerCase();
 
+            // Filtro per tennista o torneo
             const filteredData = processed.filter(m => 
                 m.player1.toLowerCase().includes(query) || 
                 m.player2.toLowerCase().includes(query) || 
@@ -162,52 +313,61 @@
 
             // Render Occasioni di Valore
             if (opportunities.length === 0) {
-                oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna occasione di valore basata su Elo al momento.</div>';
+                oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna occasione con edge superiore al 3% al momento.</div>';
             } else {
                 opportunities.forEach(match => {
                     const card = document.createElement('div');
-                    card.className = "bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3.5 hover:border-emerald-500/70 transition";
+                    card.className = "bg-emerald-950/20 border border-emerald-500/40 rounded-xl p-3.5 space-y-2";
                     card.innerHTML = `
-                        <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
+                        <div class="flex justify-between items-center text-xs text-slate-400">
                             <span class="font-medium text-emerald-400">${match.tournament}</span>
-                            <span class="font-mono bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded font-bold">${match.valuePercentage} Edge (Elo)</span>
+                            <span class="font-mono bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded font-bold">${match.edgeValue} Edge Statistico</span>
                         </div>
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm">
-                            <div>
-                                <div class="font-medium text-white">${match.player1} vs ${match.player2}</div>
-                                <div class="text-xs text-slate-400 mt-0.5">Consiglio: <strong class="text-emerald-300">Puntare su ${match.valueOn}</strong></div>
-                            </div>
-                            <div class="flex gap-3 text-xs font-mono bg-slate-900/80 p-2 rounded-lg border border-slate-800">
-                                <div>${match.player1}: <span class="text-emerald-400">${match.odds1}</span> <span class="text-slate-500">(${match.prob1}%)</span></div>
-                                <div>${match.player2}: <span class="text-emerald-400">${match.odds2}</span> <span class="text-slate-500">(${match.prob2}%)</span></div>
-                            </div>
+                        <div class="text-sm font-medium text-white">
+                            Occasione su: <strong class="text-emerald-300">${match.valueOn}</strong> (Valutato meglio del mercato)
                         </div>
                     `;
                     oppContainer.appendChild(card);
                 });
             }
 
-            // Render Palinsesto Completo
-            if (filteredData.length === 0) {
-                matchesContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna partita trovata.</div>';
-                return;
-            }
-
+            // Render Palinsesto Completo con Statistiche ultime 5 partite e inserimento quota Betfair
             filteredData.forEach(match => {
                 const card = document.createElement('div');
-                card.className = "bg-slate-800/40 border border-slate-700/50 rounded-xl p-3.5 hover:border-slate-600 transition";
+                card.className = "bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 space-y-3";
                 card.innerHTML = `
-                    <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
+                    <div class="flex justify-between items-center text-xs text-slate-400">
                         <span class="font-medium text-slate-300">${match.tournament}</span>
-                        <span class="font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-300">${match.time} CET</span>
+                        <span class="font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-300">${match.time}</span>
                     </div>
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm">
-                        <div class="space-y-1">
-                            <div><strong class="text-white">${match.player1}</strong> <span class="text-slate-500 text-xs">(${match.prob1}%)</span> vs <strong class="text-white">${match.player2}</strong> <span class="text-slate-500 text-xs">(${match.prob2}%)</span></div>
+                    
+                    <!-- Dettaglio Tennisti e Form Ultime 5 -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                        <div>
+                            <div class="font-bold text-white">${match.player1}</div>
+                            <div class="text-xs text-slate-400 mt-1">Ultime 5: <span class="font-mono text-emerald-400">${match.form1.join(' ')}</span></div>
+                            <div class="text-xs text-slate-400 mt-0.5 font-mono">Elo Prob: <strong class="text-emerald-300">${match.probElo1}%</strong> | Book: ${match.probBook1}%</div>
                         </div>
-                        <div class="flex gap-2 text-xs font-mono">
-                            <span class="bg-slate-900 border border-slate-700 px-2 py-1 rounded text-slate-300">1: <strong>${match.odds1}</strong></span>
-                            <span class="bg-slate-900 border border-slate-700 px-2 py-1 rounded text-slate-300">2: <strong>${match.odds2}</strong></span>
+                        <div>
+                            <div class="font-bold text-white">${match.player2}</div>
+                            <div class="text-xs text-slate-400 mt-1">Ultime 5: <span class="font-mono text-emerald-400">${match.form2.join(' ')}</span></div>
+                            <div class="text-xs text-slate-400 mt-0.5 font-mono">Elo Prob: <strong class="text-emerald-300">${match.probElo2}%</strong> | Book: ${match.probBook2}%</div>
+                        </div>
+                    </div>
+
+                    <!-- Modulo di inserimento quota reale Betfair e Conferma -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 text-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="text-slate-400">Puntare su:</span>
+                            <select id="side-select-${match.id}" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200">
+                                <option value="1">${match.player1} (Q. Book: ${match.odds1})</option>
+                                <option value="2">${match.player2} (Q. Book: ${match.odds2})</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2 font-mono">
+                            <input type="number" id="bet-input-${match.id}" placeholder="Quota Betfair" step="0.01" class="w-24 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-center">
+                            <input type="number" id="stake-input-${match.id}" value="10" placeholder="Stake €" class="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-center">
+                            <button onclick="addBetToSlip(${match.id})" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1 rounded transition">Gioca</button>
                         </div>
                     </div>
                 `;
