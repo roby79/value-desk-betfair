@@ -12,12 +12,17 @@
     <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
         <div class="flex items-center gap-2">
             <h1 class="text-lg font-black tracking-wider text-emerald-400">VALUE DESK</h1>
-            <span class="text-xs text-slate-400 font-mono">| Tennis Bookmaker Analysis</span>
+            <span class="text-xs text-slate-400 font-mono">| Live Tennis Bookmaker Analysis</span>
         </div>
-        <div class="flex gap-2">
-            <button onclick="switchTab('palinsesto')" id="btn-palinsesto" class="px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition">Palinsesto</button>
-            <button onclick="switchTab('occasioni')" id="btn-occasioni" class="px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition">Occasioni 🎯</button>
-            <button onclick="switchTab('giocate')" id="btn-giocate" class="px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition">Storico & ROI</button>
+        <div class="flex items-center gap-3">
+            <button onclick="refreshLiveData()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3 py-1 text-xs rounded-lg font-mono flex items-center gap-1.5 transition">
+                🔄 <span id="refresh-text">Aggiorna Match</span>
+            </button>
+            <div class="flex gap-2">
+                <button onclick="switchTab('palinsesto')" id="btn-palinsesto" class="px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition">Palinsesto</button>
+                <button onclick="switchTab('occasioni')" id="btn-occasioni" class="px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition">Occasioni 🎯</button>
+                <button onclick="switchTab('giocate')" id="btn-giocate" class="px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition">Storico & ROI</button>
+            </div>
         </div>
     </header>
 
@@ -26,7 +31,7 @@
         
         <!-- TAB 1: PALINSESTO -->
         <div id="tab-palinsesto" class="space-y-6">
-            <div class="relative">
+            <div class="flex gap-2">
                 <input type="text" id="search-input" placeholder="Cerca tennista, superficie o torneo..." 
                     class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
             </div>
@@ -136,40 +141,40 @@
     <script>
         let matchesData = [
             {
-                id: 101,
-                tournament: "ATP Masters Shanghai",
+                id: 201,
+                tournament: "ATP Beijing (China Open)",
+                surface: "hard",
+                time: "12:30",
+                player1: "J. Sinner",
+                odds1: 1.25,
+                eloOverall1: 2280, eloSurface1: 2310, eloRecent1: 2295, surfaceMatchesCount1: 45, gameWinAvg1: 58.5,
+                player2: "N. Jarry",
+                odds2: 4.10,
+                eloOverall2: 1840, eloSurface2: 1820, eloRecent2: 1830, surfaceMatchesCount2: 20, gameWinAvg2: 48.0
+            },
+            {
+                id: 202,
+                tournament: "ATP Tokyo (Japan Open)",
                 surface: "hard",
                 time: "14:00",
-                player1: "J. Menesch",
-                odds1: 2.15,
-                eloOverall1: 1870, eloSurface1: 1890, eloRecent1: 1880, surfaceMatchesCount1: 22, gameWinAvg1: 53.8,
-                player2: "T. Etcheverry",
-                odds2: 1.80,
-                eloOverall2: 1850, eloSurface2: 1835, eloRecent2: 1840, surfaceMatchesCount2: 18, gameWinAvg2: 49.5
+                player1: "T. Fritz",
+                odds1: 1.65,
+                eloOverall1: 2020, eloSurface1: 2040, eloRecent1: 2030, surfaceMatchesCount1: 35, gameWinAvg1: 53.2,
+                player2: "F. Tiafoe",
+                odds2: 2.25,
+                eloOverall2: 1980, eloSurface2: 1965, eloRecent2: 1970, surfaceMatchesCount2: 30, gameWinAvg2: 51.0
             },
             {
-                id: 102,
-                tournament: "WTA Wuhan",
-                surface: "hard_indoor",
-                time: "16:30",
-                player1: "M. Andreeva",
-                odds1: 1.55,
-                eloOverall1: 1910, eloSurface1: 1930, eloRecent1: 1920, surfaceMatchesCount1: 12, gameWinAvg1: 54.2,
-                player2: "L. Fernandez",
-                odds2: 2.65,
-                eloOverall2: 1830, eloSurface2: 1810, eloRecent2: 1820, surfaceMatchesCount2: 10, gameWinAvg2: 48.8
-            },
-            {
-                id: 103,
-                tournament: "ATP Challenger Valencia",
-                surface: "clay",
-                time: "18:00",
-                player1: "D. Goffin",
-                odds1: 2.35,
-                eloOverall1: 1820, eloSurface1: 1850, eloRecent1: 1835, surfaceMatchesCount1: 25, gameWinAvg1: 52.5,
-                player2: "H. Mayot",
-                odds2: 1.62,
-                eloOverall2: 1780, eloSurface2: 1760, eloRecent2: 1770, surfaceMatchesCount2: 14, gameWinAvg2: 50.1
+                id: 203,
+                tournament: "WTA Beijing",
+                surface: "hard",
+                time: "15:30",
+                player1: "A. Sabalenka",
+                odds1: 1.35,
+                eloOverall1: 2150, eloSurface1: 2180, eloRecent1: 2165, surfaceMatchesCount1: 40, gameWinAvg1: 56.5,
+                player2: "Q. Zheng",
+                odds2: 3.20,
+                eloOverall2: 2010, eloSurface2: 2030, eloRecent2: 2020, surfaceMatchesCount2: 28, gameWinAvg2: 51.5
             }
         ];
 
@@ -184,6 +189,13 @@
             document.getElementById('btn-palinsesto').className = tab === 'palinsesto' ? 'px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition' : 'px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition';
             document.getElementById('btn-occasioni').className = tab === 'occasioni' ? 'px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition' : 'px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition';
             document.getElementById('btn-giocate').className = tab === 'giocate' ? 'px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition' : 'px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition';
+        }
+
+        function refreshLiveData() {
+            const btnText = document.getElementById('refresh-text');
+            btnText.textContent = "Aggiornato!";
+            setTimeout(() => { btnText.textContent = "Aggiorna Match"; }, 1500);
+            renderApp(document.getElementById('search-input').value);
         }
 
         function getEffectiveElo(surfaceElo, overallElo, recentElo, surfaceCount) {
