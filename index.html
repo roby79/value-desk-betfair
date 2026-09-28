@@ -1,656 +1,624 @@
 <!DOCTYPE html>
-<html lang="it" class="dark">
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Value Desk - Pro Tennis Engine (+EV, Lay & Progression)</title>
+    <title>Value Desk - Betting & Bankroll Management</title>
+    <!-- Google Fonts & Tailwind CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        dark: { 900: '#0f172a', 800: '#1e293b', 700: '#334155', 600: '#475569' },
+                        brand: { 500: '#10b981', 600: '#059669', 700: '#047857' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js per i grafici -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+<body class="bg-dark-900 text-slate-100 font-sans min-h-screen flex flex-col">
 
     <!-- Header -->
-    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center gap-2">
-            <h1 class="text-lg font-black tracking-wider text-emerald-400">VALUE DESK</h1>
-            <span class="text-xs text-slate-400 font-mono">| Advanced Engine & Trading</span>
+    <header class="bg-dark-800 border-b border-dark-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-brand-500 text-dark-900 p-2 rounded-xl font-bold text-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
+                    📈
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white">Value Desk</h1>
+                    <p class="text-xs text-slate-400">Gestione Professionale Bankroll & Trading</p>
+                </div>
+            </div>
+            <!-- Quick Stats Bar Header -->
+            <div class="flex items-center gap-3 bg-dark-900/60 px-4 py-2 rounded-xl border border-dark-700 text-sm">
+                <div>
+                    <span class="text-xs text-slate-400 block">Bankroll Attuale</span>
+                    <span id="header-bankroll" class="font-bold text-brand-500">€ 0.00</span>
+                </div>
+                <div class="h-8 w-px bg-dark-700"></div>
+                <div>
+                    <span class="text-xs text-slate-400 block">ROI Totale</span>
+                    <span id="header-roi" class="font-bold text-slate-200">0.00%</span>
+                </div>
+            </div>
         </div>
-        <div class="flex items-center gap-3">
-            <div class="bg-slate-900 border border-slate-700 px-3 py-1 rounded-lg text-xs font-mono flex items-center gap-2">
-                <span>Cassa: <strong id="header-bankroll" class="text-emerald-400">€1,000.00</strong></span>
-                <button onclick="openBankrollModal()" class="text-slate-400 hover:text-white" title="Modifica Cassa">✏️</button>
-            </div>
-            <div class="flex gap-1.5 overflow-x-auto">
-                <button onclick="switchTab('palinsesto')" id="btn-palinsesto" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition">Palinsesto</button>
-                <button onclick="switchTab('occasioni')" id="btn-occasioni" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition">Occasioni 🎯</button>
-                <button onclick="switchTab('giocate')" id="btn-giocate" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition">Storico</button>
-                <button onclick="switchTab('progressione')" id="btn-progressione" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition">Progressione 📈</button>
-            </div>
+        <!-- Navigation Tabs -->
+        <div class="max-w-7xl mx-auto px-4 flex space-x-2 overflow-x-auto pb-2 border-t border-dark-700/50 pt-2">
+            <button onclick="switchTab('dashboard')" id="btn-tab-dashboard" class="tab-btn px-4 py-2 rounded-lg font-medium text-sm transition-all bg-brand-500 text-dark-900 shadow-md">📊 Dashboard</button>
+            <button onclick="switchTab('palinsesto')" id="btn-tab-palinsesto" class="tab-btn px-4 py-2 rounded-lg font-medium text-sm transition-all text-slate-300 hover:bg-dark-700">🎯 Palinsesto & Indicazioni</button>
+            <button onclick="switchTab('storico')" id="btn-tab-storico" class="tab-btn px-4 py-2 rounded-lg font-medium text-sm transition-all text-slate-300 hover:bg-dark-700">📜 Storico Scommesse</button>
+            <button onclick="switchTab('bankroll')" id="btn-tab-bankroll" class="tab-btn px-4 py-2 rounded-lg font-medium text-sm transition-all text-slate-300 hover:bg-dark-700">💰 Gestione Cassa</button>
         </div>
     </header>
 
     <!-- Main Container -->
-    <main class="flex-1 max-w-4xl w-full mx-auto p-4 space-y-6">
-        
-        <!-- TAB 1: PALINSESTO -->
-        <div id="tab-palinsesto" class="space-y-6">
-            <div class="flex gap-2 items-center">
-                <input type="text" id="search-input" placeholder="Cerca tennista, superficie o torneo..." 
-                    class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
-                <button onclick="fetchLivePalinsesto()" id="update-btn" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs font-mono whitespace-nowrap transition flex items-center gap-1.5 shadow">
-                    🔄 Aggiorna
-                </button>
-            </div>
-            
-            <div id="update-status" class="text-xs text-slate-400 font-mono px-1"></div>
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
 
-            <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl space-y-4">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-slate-200 flex items-center gap-2">📅 Palinsesto & Analisi Doppia (Favorito / Sfavorito)</h2>
-                    <span id="match-count" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-mono">0 match</span>
+        <!-- TAB 1: DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-dark-800 p-5 rounded-2xl border border-dark-700 shadow-sm">
+                    <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Bankroll Iniziale</p>
+                    <p id="dash-initial-bank" class="text-2xl font-bold text-white mt-1">€ 0.00</p>
                 </div>
-                <div id="matches-container" class="space-y-3"></div>
-            </section>
-        </div>
-
-        <!-- TAB 2: OCCASIONI -->
-        <div id="tab-occasioni" class="space-y-6 hidden">
-            <div class="bg-emerald-950/20 border border-emerald-500/20 p-3 rounded-xl text-xs text-slate-300">
-                💡 <strong class="text-emerald-400">Analisi Automatica (+EV & Bancata):</strong> Il motore calcola se sul favorito o sullo sfavorito conviene aprire una giocata in **Punta** o una strategia di **Bancata (Lay)** in base al disallineamento delle quote.
+                <div class="bg-dark-800 p-5 rounded-2xl border border-dark-700 shadow-sm">
+                    <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Profitto / Perdita</p>
+                    <p id="dash-profit" class="text-2xl font-bold mt-1">€ 0.00</p>
+                </div>
+                <div class="bg-dark-800 p-5 rounded-2xl border border-dark-700 shadow-sm">
+                    <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Win Rate</p>
+                    <p id="dash-winrate" class="text-2xl font-bold text-white mt-1">0.00%</p>
+                </div>
+                <div class="bg-dark-800 p-5 rounded-2xl border border-dark-700 shadow-sm">
+                    <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Giocate Totali</p>
+                    <p id="dash-total-bets" class="text-2xl font-bold text-white mt-1">0</p>
+                </div>
             </div>
 
-            <section class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4 shadow-xl space-y-4">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Opportunità a Valore (+EV & Lay)</h2>
-                    <span id="opp-count" class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">0 opportunità</span>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-dark-800 p-5 rounded-2xl border border-dark-700 lg:col-span-2">
+                    <h3 class="text-lg font-semibold mb-4 text-white">Andamento Bankroll</h3>
+                    <div class="h-72 relative">
+                        <canvas id="bankrollChart"></canvas>
+                    </div>
                 </div>
-                <div id="opportunities-container" class="space-y-3"></div>
-            </section>
+                <div class="bg-dark-800 p-5 rounded-2xl border border-dark-700">
+                    <h3 class="text-lg font-semibold mb-4 text-white">Esito Scommesse</h3>
+                    <div class="h-72 relative flex items-center justify-center">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- TAB 3: GIOCATE -->
-        <div id="tab-giocate" class="space-y-6 hidden">
-            <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl space-y-4">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-emerald-400">📊 Storico Giocate & Piano Cassa</h2>
-                    <div class="text-xs font-mono text-slate-400">Cassa Attuale: <strong id="stats-current-bank" class="text-emerald-400">€1,000.00</strong></div>
-                </div>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400">Totale Giocate</div>
-                        <div id="stats-total" class="text-lg font-bold font-mono text-white">0</div>
+        <!-- TAB 2: PALINSESTO & INDICATORI PUNTA/BANCA -->
+        <div id="tab-palinsesto" class="tab-content hidden space-y-6">
+            <div class="bg-dark-800 p-6 rounded-2xl border border-dark-700 shadow-lg">
+                <h2 class="text-xl font-bold mb-4 text-white flex items-center gap-2"><span>🎯</span> Inserisci Match & Analisi Punta / Banca</h2>
+                <form id="value-form" onsubmit="calculateValueBet(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Giocatore / Evento (Es. Favorito vs Sfavorito)</label>
+                        <input type="text" id="match-name" required placeholder="Es. Hubert Hurkacz vs Denis Shapovalov" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
                     </div>
-                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400">Stake Impegnato</div>
-                        <div id="stats-stake" class="text-lg font-bold font-mono text-emerald-400">€0.00</div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Esito / Selezione</label>
+                        <input type="text" id="match-market" required placeholder="Es. Vittoria Hurkacz (Segno 1)" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
                     </div>
-                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400">Utile Netto</div>
-                        <div id="stats-pl" class="text-lg font-bold font-mono text-emerald-400">€0.00</div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Quota Mercato (Book / Exchange)</label>
+                        <input type="number" step="0.01" min="1.01" id="match-odds" required placeholder="Es. 1.68" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
                     </div>
-                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400">ROI %</div>
-                        <div id="stats-roi" class="text-lg font-bold font-mono text-emerald-400">0.00%</div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Tua Probabilità stimata (%) [Modello]</label>
+                        <input type="number" step="0.1" min="1" max="100" id="match-prob" required placeholder="Es. 77.3" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
                     </div>
-                </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Criterio Kelly / Stake</label>
+                        <select id="kelly-fraction" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                            <option value="0.25">Kelly 1/4 (Conservativo)</option>
+                            <option value="0.5" selected>Kelly 1/2 (Consigliato)</option>
+                            <option value="1">Kelly Pieno (Aggressivo)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-dark-900 font-bold py-2 px-4 rounded-xl transition-all shadow-md shadow-brand-500/20">Calcola Indicazione & Salva</button>
+                    </div>
+                </form>
+            </div>
 
-                <div class="overflow-x-auto pt-2">
-                    <table class="w-full text-left text-xs font-mono">
+            <!-- Tabella Palinsesto con Indicazione Visiva Chiara -->
+            <div class="bg-dark-800 rounded-2xl border border-dark-700 overflow-hidden shadow-lg">
+                <div class="p-4 border-b border-dark-700 flex justify-between items-center">
+                    <h3 class="font-semibold text-white">Palinsesto Analizzato & Direzione Consigliata (Punta / Banca)</h3>
+                    <button onclick="clearPalinsesto()" class="text-xs text-red-400 hover:underline">Svuota Palinsesto</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
                         <thead>
-                            <tr class="border-b border-slate-800 text-slate-400">
-                                <th class="pb-2">Match</th>
-                                <th class="pb-2">Tipo / Selezione</th>
-                                <th class="pb-2">Quota</th>
-                                <th class="pb-2">Stake / Responsabilità</th>
-                                <th class="pb-2">Esito</th>
-                                <th class="pb-2">P&L</th>
+                            <tr class="bg-dark-900/50 text-slate-400 text-xs uppercase border-b border-dark-700">
+                                <th class="p-3">Evento</th>
+                                <th class="p-3">Selezione</th>
+                                <th class="p-3">Quota Mercato</th>
+                                <th class="p-3">Quota Equa</th>
+                                <th class="p-3">Prob. Modello</th>
+                                <th class="p-3">Indicazione Visiva</th>
+                                <th class="p-3">Stake Consigliato</th>
+                                <th class="p-3 text-right">Azioni</th>
                             </tr>
                         </thead>
-                        <tbody id="bets-table-body">
-                            <tr><td colspan="6" class="py-4 text-center text-slate-500 italic">Nessuna giocata registrata.</td></tr>
+                        <tbody id="palinsesto-table-body" class="divide-y divide-dark-700">
+                            <!-- Popolato via JS -->
                         </tbody>
                     </table>
                 </div>
-            </section>
+            </div>
         </div>
 
-        <!-- TAB 4: PROGRESSIONE -->
-        <div id="tab-progressione" class="space-y-6 hidden">
-            <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl space-y-4">
-                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">📈 Scheda Andamento & Progressione Bankroll</h2>
-                    <div class="text-xs font-mono text-slate-400">Cassa Iniziale: <strong id="prog-init-bank" class="text-white">€1,000.00</strong></div>
-                </div>
+        <!-- TAB 3: STORICO SCOMMESSE -->
+        <div id="tab-storico" class="tab-content hidden space-y-6">
+            <div class="flex justify-between items-center bg-dark-800 p-4 rounded-2xl border border-dark-700">
+                <h2 class="text-lg font-bold text-white">Storico Giocate Registrate</h2>
+                <button onclick="openManualBetModal()" class="bg-brand-500 hover:bg-brand-600 text-dark-900 font-semibold px-4 py-2 rounded-xl text-sm transition-all">+ Aggiungi Scommessa Manuale</button>
+            </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400">Cassa Attuale</div>
-                        <div id="prog-current-bank" class="text-lg font-bold font-mono text-emerald-400">€1,000.00</div>
-                    </div>
-                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400">Crescita Percentuale</div>
-                        <div id="prog-growth" class="text-lg font-bold font-mono text-emerald-400">+0.00%</div>
-                    </div>
-                    <div class="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400">Scommesse Vincenti</div>
-                        <div id="prog-winrate" class="text-lg font-bold font-mono text-white">0% (0/0)</div>
-                    </div>
+            <div class="bg-dark-800 rounded-2xl border border-dark-700 overflow-hidden shadow-lg">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-dark-900/50 text-slate-400 text-xs uppercase border-b border-dark-700">
+                                <th class="p-3">Data</th>
+                                <th class="p-3">Evento</th>
+                                <th class="p-3">Mercato</th>
+                                <th class="p-3">Quota</th>
+                                <th class="p-3">Importo (€)</th>
+                                <th class="p-3">Esito</th>
+                                <th class="p-3">Profitto (€)</th>
+                                <th class="p-3 text-right">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bets-table-body" class="divide-y divide-dark-700">
+                            <!-- Popolato via JS -->
+                        </tbody>
+                    </table>
                 </div>
+            </div>
+        </div>
 
-                <!-- Grafico visivo a barre delle transazioni di cassa -->
-                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-                    <div class="text-xs font-bold text-slate-300">Storico Progressione Cassa nel Tempo:</div>
-                    <div id="progression-chart" class="space-y-2 font-mono text-xs max-h-60 overflow-y-auto pr-2">
-                        <div class="text-slate-500 italic">Nessun movimento registrato. La progressione partirà dalla prima giocata conclusa.</div>
+        <!-- TAB 4: GESTIONE CASSA -->
+        <div id="tab-bankroll" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-dark-800 p-6 rounded-2xl border border-dark-700 shadow-lg space-y-4">
+                    <h2 class="text-xl font-bold text-white">Configurazione Bankroll Iniziale</h2>
+                    <p class="text-xs text-slate-400">Imposta il capitale iniziale di partenza.</p>
+                    <form onsubmit="updateInitialBankroll(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Capitale Iniziale (€)</label>
+                            <input type="number" step="0.01" id="input-initial-bank" required class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                        </div>
+                        <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-dark-900 font-bold py-2 px-4 rounded-xl transition-all">Aggiorna Bankroll Iniziale</button>
+                    </form>
+                </div>
+                <div class="bg-dark-800 p-6 rounded-2xl border border-dark-700 shadow-lg space-y-4">
+                    <h2 class="text-xl font-bold text-white">Backup & Gestione Dati</h2>
+                    <p class="text-xs text-slate-400">Salva o ripristina tutti i tuoi dati salvati sul browser in un file JSON.</p>
+                    <div class="flex flex-col gap-3">
+                        <button onclick="exportData()" class="w-full bg-dark-700 hover:bg-dark-600 text-white font-semibold py-2 px-4 rounded-xl text-sm transition-all">📥 Esporta Backup (JSON)</button>
+                        <label class="w-full bg-dark-700 hover:bg-dark-600 text-white font-semibold py-2 px-4 rounded-xl text-sm transition-all text-center cursor-pointer">
+                            📤 Importa Backup (JSON)
+                            <input type="file" id="import-file" accept=".json" onchange="importData(event)" class="hidden">
+                        </label>
+                        <button onclick="resetAllData()" class="w-full bg-red-500/20 text-red-400 hover:bg-red-500/30 font-semibold py-2 px-4 rounded-xl text-sm transition-all border border-red-500/30">⚠️ Reset Totale Dati</button>
                     </div>
                 </div>
-            </section>
+            </div>
         </div>
 
     </main>
 
-    <!-- Modale Inserimento Quota Live & Calcolo Stake / Bancata -->
-    <div id="bet-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                <h3 id="modal-title" class="text-sm font-bold text-emerald-400">⚡ Conferma Giocata & Stake</h3>
-                <button onclick="closeBetModal()" class="text-slate-400 hover:text-white text-sm font-bold">✕</button>
-            </div>
-            <div id="modal-match-info" class="text-xs text-slate-300 font-mono bg-slate-950 p-2 rounded border border-slate-800"></div>
-            
-            <div class="space-y-3 text-xs">
+    <!-- Modale Aggiunta Scommessa Manuale -->
+    <div id="bet-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-dark-800 border border-dark-700 w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
+            <h3 id="modal-title" class="text-lg font-bold text-white">Registra Scommessa</h3>
+            <form id="modal-bet-form" onsubmit="saveModalBet(event)" class="space-y-3">
+                <input type="hidden" id="modal-bet-id">
                 <div>
-                    <label class="block text-slate-400 mb-1">Azione & Selezione</label>
-                    <input type="text" id="modal-side" disabled class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-emerald-400 font-bold font-mono">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Evento</label>
+                    <input type="text" id="modal-match" required class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
                 </div>
                 <div>
-                    <label class="block text-slate-400 mb-1" id="label-odds-input">Inserisci Quota Reale:</label>
-                    <input type="number" id="modal-odds" step="0.01" oninput="recalculateLiveStake()" class="w-full bg-slate-950 border border-emerald-500 rounded px-3 py-2 text-white font-bold font-mono text-sm focus:outline-none">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Mercato</label>
+                    <input type="text" id="modal-market" required class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
                 </div>
-                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
-                    <div class="flex justify-between text-slate-400">
-                        <span>Cassa attuale:</span>
-                        <strong id="modal-current-bank" class="text-white font-mono">€1,000.00</strong>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Quota</label>
+                        <input type="number" step="0.01" min="1.01" id="modal-odds" required class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
                     </div>
-                    <div class="flex justify-between text-slate-400">
-                        <span id="label-calc-stake">Stake Consigliato (1.5%):</span>
-                        <strong id="modal-calc-stake" class="text-emerald-400 font-mono text-sm">€15.00</strong>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Importo (€)</label>
+                        <input type="number" step="0.01" min="0.1" id="modal-stake" required class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
                     </div>
                 </div>
                 <div>
-                    <label class="block text-slate-400 mb-1" id="label-final-stake">Conferma Importo (€)</label>
-                    <input type="number" id="modal-final-stake" step="0.5" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 font-mono">
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Esito</label>
+                    <select id="modal-status" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                        <option value="pending">In Corso / Pendente</option>
+                        <option value="win">Vinta</option>
+                        <option value="loss">Persa</option>
+                        <option value="void">Rimborso / Void</option>
+                    </select>
                 </div>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
-                <button onclick="closeBetModal()" class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">Annulla</button>
-                <button onclick="confirmLiveBet()" class="px-4 py-1.5 rounded bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400">Registra nel Piano</button>
-            </div>
+                <div class="flex justify-end gap-2 pt-3">
+                    <button type="button" onclick="closeModal()" class="bg-dark-700 hover:bg-dark-600 text-white px-4 py-2 rounded-xl text-sm font-medium">Annulla</button>
+                    <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-dark-900 px-4 py-2 rounded-xl text-sm font-bold">Salva</button>
+                </div>
+            </main>
         </div>
     </div>
 
-    <!-- Modale Modifica Cassa -->
-    <div id="bankroll-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                <h3 class="text-sm font-bold text-emerald-400">Modifica Cassa Iniziale</h3>
-                <button onclick="closeBankrollModal()" class="text-slate-400 hover:text-white text-sm font-bold">✕</button>
-            </div>
-            <div class="space-y-3 text-xs">
-                <div>
-                    <label class="block text-slate-400 mb-1">Nuovo Bankroll Totale (€)</label>
-                    <input type="number" id="input-new-bankroll" step="10" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 font-mono">
-                </div>
-            </div>
-            <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
-                <button onclick="closeBankrollModal()" class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">Annulla</button>
-                <button onclick="saveNewBankroll()" class="px-4 py-1.5 rounded bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400">Salva</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- Application Script -->
     <script>
-        let initialBankroll = parseFloat(localStorage.getItem('vd_initial_bankroll')) || 1000.00;
-        let placedBets = JSON.parse(localStorage.getItem('vd_placed_bets')) || [];
-        
-        let matchesData = JSON.parse(localStorage.getItem('vd_live_matches')) || [
-            {
-                id: 801,
-                tournament: "ATP Chengdu Open",
-                surface: "hard",
-                time: "Oggi 13:30",
-                player1: "Hubert Hurkacz",
-                baseOdds1: 1.68,
-                eloOverall1: 2080, eloSurface1: 2110, eloRecent1: 2095, surfaceMatchesCount1: 50, gameWinAvg1: 57.0,
-                player2: "Denis Shapovalov",
-                baseOdds2: 2.52,
-                eloOverall2: 1890, eloSurface2: 1880, eloRecent2: 1885, surfaceMatchesCount2: 38, gameWinAvg2: 47.5
-            },
-            {
-                id: 802,
-                tournament: "ATP Hangzhou Open",
-                surface: "hard",
-                time: "Oggi 15:00",
-                player1: "Marin Cilic",
-                baseOdds1: 2.10,
-                eloOverall1: 1910, eloSurface1: 1930, eloRecent1: 1920, surfaceMatchesCount1: 35, gameWinAvg1: 51.0,
-                player2: "Brandon Nakashima",
-                baseOdds2: 1.72,
-                eloOverall2: 1940, eloSurface2: 1955, eloRecent2: 1948, surfaceMatchesCount2: 40, gameWinAvg2: 52.5
-            },
-            {
-                id: 803,
-                tournament: "ATP Tokyo Open",
-                surface: "hard",
-                time: "Oggi 17:15",
-                player1: "Taylor Fritz",
-                baseOdds1: 1.42,
-                eloOverall1: 2050, eloSurface1: 2070, eloRecent1: 2060, surfaceMatchesCount1: 60, gameWinAvg1: 56.0,
-                player2: "Alex Michelsen",
-                baseOdds2: 2.95,
-                eloOverall2: 1860, eloSurface2: 1850, eloRecent2: 1855, surfaceMatchesCount2: 30, gameWinAvg2: 46.0
+        let appData = {
+            initialBankroll: 1000,
+            palinsesto: [],
+            bets: []
+        };
+
+        let bankrollChartInstance = null;
+        let statusChartInstance = null;
+
+        function loadData() {
+            const saved = localStorage.getItem('value_desk_data');
+            if (saved) {
+                try { appData = JSON.parse(saved); } catch(e) { console.error(e); }
             }
-        ];
-
-        let activeBetContext = null;
-
-        function saveToStorage() {
-            localStorage.setItem('vd_initial_bankroll', initialBankroll);
-            localStorage.setItem('vd_placed_bets', JSON.stringify(placedBets));
-            localStorage.setItem('vd_live_matches', JSON.stringify(matchesData));
+            document.getElementById('input-initial-bank').value = appData.initialBankroll;
+            renderAll();
         }
 
-        async function fetchLivePalinsesto() {
-            const statusEl = document.getElementById('update-status');
-            const btnEl = document.getElementById('update-btn');
-            
-            btnEl.disabled = true;
-            btnEl.textContent = "Aggiornamento...";
-            statusEl.textContent = "Sincronizzazione dati Elo & quote live in corso...";
+        function saveData() {
+            localStorage.setItem('value_desk_data', JSON.stringify(appData));
+            renderAll();
+        }
 
-            try {
-                await new Promise(resolve => setTimeout(resolve, 800));
-                matchesData = matchesData.map(m => {
-                    const rnd1 = (Math.random() * 0.12 - 0.06);
-                    const rnd2 = (Math.random() * 0.12 - 0.06);
-                    return {
-                        ...m,
-                        baseOdds1: parseFloat((m.baseOdds1 + rnd1).toFixed(2)),
-                        baseOdds2: parseFloat((m.baseOdds2 + rnd2).toFixed(2))
-                    };
-                });
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-brand-500', 'text-dark-900', 'shadow-md');
+                btn.classList.add('text-slate-300', 'hover:bg-dark-700');
+            });
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`btn-tab-${tabId}`);
+            activeBtn.classList.remove('text-slate-300', 'hover:bg-dark-700');
+            activeBtn.classList.add('bg-brand-500', 'text-dark-900', 'shadow-md');
 
-                saveToStorage();
-                renderApp();
-                
-                const now = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-                statusEl.innerHTML = `<span class="text-emerald-400">✓ Palinsesto e analisi doppia aggiornati alle ${now}.</span>`;
-            } catch (err) {
-                statusEl.innerHTML = `<span class="text-red-400">Errore di sincronizzazione.</span>`;
-            } finally {
-                btnEl.disabled = false;
-                btnEl.textContent = "🔄 Aggiorna";
+            if(tabId === 'dashboard') renderCharts();
+        }
+
+        function calculateValueBet(e) {
+            e.preventDefault();
+            const match = document.getElementById('match-name').value;
+            const market = document.getElementById('match-market').value;
+            const odds = parseFloat(document.getElementById('match-odds').value);
+            const prob = parseFloat(document.getElementById('match-prob').value);
+            const kellyFraction = parseFloat(document.getElementById('kelly-fraction').value);
+
+            // Calcoli
+            const fairOdds = 100 / prob;
+            const impliedProb = (1 / odds) * 100;
+            const valuePercent = ((prob - impliedProb) / impliedProb) * 100;
+
+            // Logica istantanea: se Quota Mercato > Quota Equa -> PUNTA (Value Bet), altrimenti -> BANCA (Quota bassa rispetto al reale valore stimato)
+            let actionType = 'PUNTA';
+            if (odds < fairOdds) {
+                actionType = 'BANCA';
             }
+
+            // Kelly Stake
+            const currentBank = getCurrentBankroll();
+            const b = odds - 1;
+            const p = prob / 100;
+            const q = 1 - p;
+            let kellyFull = (p * b - q) / b;
+            if (kellyFull < 0) kellyFull = 0;
+            const recommendedStake = currentBank * kellyFull * kellyFraction;
+
+            const newEntry = {
+                id: Date.now(),
+                match,
+                market,
+                odds,
+                fairOdds: fairOdds.toFixed(2),
+                prob,
+                value: valuePercent.toFixed(1),
+                action: actionType,
+                stake: Math.max(0, recommendedStake).toFixed(2)
+            };
+
+            appData.palinsesto.push(newEntry);
+            saveData();
+            document.getElementById('value-form').reset();
+            switchTab('palinsesto');
         }
 
         function getCurrentBankroll() {
-            const totalPnL = placedBets.reduce((acc, b) => acc + b.pnl, 0);
-            return initialBankroll + totalPnL;
-        }
-
-        function updateBankrollDisplay() {
-            const current = getCurrentBankroll();
-            document.getElementById('header-bankroll').textContent = `€${current.toFixed(2)}`;
-            document.getElementById('stats-current-bank').textContent = `€${current.toFixed(2)}`;
-            saveToStorage();
-        }
-
-        function openBankrollModal() {
-            document.getElementById('input-new-bankroll').value = getCurrentBankroll().toFixed(2);
-            document.getElementById('bankroll-modal').classList.remove('hidden');
-        }
-
-        function closeBankrollModal() {
-            document.getElementById('bankroll-modal').classList.add('hidden');
-        }
-
-        function saveNewBankroll() {
-            const newVal = parseFloat(document.getElementById('input-new-bankroll').value);
-            if (!newVal || newVal <= 0) return alert("Inserisci un valore valido.");
-            const currentPnL = placedBets.reduce((acc, b) => acc + b.pnl, 0);
-            initialBankroll = newVal - currentPnL;
-            closeBankrollModal();
-            updateBankrollDisplay();
-            updateGiocateTab();
-            updateProgressioneTab();
-        }
-
-        function switchTab(tab) {
-            ['palinsesto', 'occasioni', 'giocate', 'progressione'].forEach(t => {
-                document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tab);
-                document.getElementById(`btn-${t}`).className = t === tab ? 'px-2.5 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition' : 'px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 transition';
+            let profitLoss = 0;
+            appData.bets.forEach(b => {
+                if(b.status === 'win') profitLoss += (b.odds - 1) * b.stake;
+                if(b.status === 'loss') profitLoss -= b.stake;
             });
-            if (tab === 'progressione') updateProgressioneTab();
+            return appData.initialBankroll + profitLoss;
         }
 
-        function getEffectiveElo(surfaceElo, overallElo, recentElo, surfaceCount) {
-            let w_surface = 0.55, w_overall = 0.25, w_recent = 0.20;
-            if (surfaceCount < 5) { w_surface = 0.25; w_overall = 0.55; w_recent = 0.20; }
-            return (w_surface * surfaceElo) + (w_overall * overallElo) + (w_recent * recentElo);
+        function clearPalinsesto() {
+            if(confirm('Vuoi svuotare tutto il palinsesto?')) {
+                appData.palinsesto = [];
+                saveData();
+            }
         }
 
-        function processMatches() {
-            return matchesData.map(match => {
-                const effElo1 = getEffectiveElo(match.eloSurface1, match.eloOverall1, match.eloRecent1, match.surfaceMatchesCount1);
-                const effElo2 = getEffectiveElo(match.eloSurface2, match.eloOverall2, match.eloRecent2, match.surfaceMatchesCount2);
-
-                const eloDiff = effElo1 - effElo2;
-                const gameDiff = (match.gameWinAvg1 - match.gameWinAvg2) * 3.0; 
-                const rawProb1 = 1 / (1 + Math.pow(10, -(eloDiff + gameDiff) / 400));
-                
-                const prob1 = 0.5 + (rawProb1 - 0.5) * 0.90;
-                const prob2 = 1 - prob1;
-
-                const fairOdds1 = 1 / prob1;
-                const fairOdds2 = 1 / prob2;
-
-                // Logica di valutazione per Favorito e Sfavorito (Puntata o Bancata Lay)
-                // Se la quota di mercato è superiore alla quota equa (+EV), valutiamo Punta.
-                // Se la quota di mercato del favorito o sfavorito è significativamente più bassa della quota equa (es. mercato sovrastima), valutiamo Bancata (Lay).
-                const targetEV = 0.02;
-                const isValPunta1 = match.baseOdds1 >= (fairOdds1 * (1 + targetEV));
-                const isValPunta2 = match.baseOdds2 >= (fairOdds2 * (1 + targetEV));
-
-                // Condizione per Bancare (Lay): se la quota offerta è inferiore alla quota equa del modello (mercato spinge troppo su un tennista)
-                const isValLay1 = match.baseOdds1 < (fairOdds1 * 0.95);
-                const isValLay2 = match.baseOdds2 < (fairOdds2 * 0.95);
-
-                return {
-                    ...match,
-                    prob1: (prob1 * 100).toFixed(1),
-                    prob2: (prob2 * 100).toFixed(1),
-                    fairOdds1: fairOdds1.toFixed(2),
-                    fairOdds2: fairOdds2.toFixed(2),
-                    isValPunta1, isValPunta2,
-                    isValLay1, isValLay2
-                };
-            });
+        function deletePalinsestoItem(id) {
+            appData.palinsesto = appData.palinsesto.filter(item => item.id !== id);
+            saveData();
         }
 
-        function openBetModal(matchId, mode, playerNum, defaultOdds) {
-            const match = matchesData.find(m => m.id === matchId);
-            if (!match) return;
-            const playerName = playerNum === 1 ? match.player1 : match.player2;
-            
-            activeBetContext = { matchId, mode, playerNum, playerName };
-            
-            const sideText = mode === 'Punta' ? `Punta ${playerName}` : `Banca (Lay) ${playerName}`;
-            document.getElementById('modal-title').textContent = mode === 'Punta' ? '⚡ Conferma Puntata (+EV)' : '🛡️ Conferma Bancata (Trading Lay)';
-            document.getElementById('modal-match-info').textContent = `${match.tournament} (${match.surface}): ${match.player1} vs ${match.player2}`;
-            document.getElementById('modal-side').value = sideText;
-            document.getElementById('modal-odds').value = defaultOdds;
-            
-            document.getElementById('label-odds-input').textContent = mode === 'Punta' ? 'Inserisci Quota Reale (Punta):' : 'Inserisci Quota Reale (Banca):';
-            document.getElementById('label-calc-stake').textContent = mode === 'Punta' ? 'Stake Consigliato (1.5%):' : 'Responsabilità Massima (Lay):';
-            document.getElementById('label-final-stake').textContent = mode === 'Punta' ? 'Conferma Stake (€)' : 'Conferma Puntata Bancata (€)';
-            
-            recalculateLiveStake();
+        function betFromPalinsesto(id) {
+            const item = appData.palinsesto.find(p => p.id === id);
+            if(!item) return;
+            openManualBetModal(item);
+            deletePalinsestoItem(id);
+        }
+
+        function openManualBetModal(prefill = null) {
             document.getElementById('bet-modal').classList.remove('hidden');
-        }
-
-        function recalculateLiveStake() {
-            const currentBank = getCurrentBankroll();
-            const odds = parseFloat(document.getElementById('modal-odds').value) || 2.0;
-            const mode = activeBetContext ? activeBetContext.mode : 'Punta';
-            
-            let suggested = Math.round((currentBank * 0.015) * 100) / 100;
-            document.getElementById('modal-current-bank').textContent = `€${currentBank.toFixed(2)}`;
-            document.getElementById('modal-calc-stake').textContent = `€${suggested.toFixed(2)}`;
-            document.getElementById('modal-final-stake').value = suggested > 0 ? suggested : 10;
-        }
-
-        function closeBetModal() {
-            document.getElementById('bet-modal').classList.add('hidden');
-            activeBetContext = null;
-        }
-
-        function confirmLiveBet() {
-            if (!activeBetContext) return;
-            const match = matchesData.find(m => m.id === activeBetContext.matchId);
-            const odds = parseFloat(document.getElementById('modal-odds').value);
-            const stake = parseFloat(document.getElementById('modal-final-stake').value);
-            
-            if (!odds || odds <= 1 || !stake || stake <= 0) return alert("Inserisci dati validi.");
-            
-            const type = activeBetContext.mode;
-            const side = `${type} ${activeBetContext.playerName}`;
-            
-            placedBets.push({
-                id: Date.now(),
-                match: `${match.player1} vs ${match.player2}`,
-                side,
-                type,
-                odds, 
-                stake, 
-                status: 'In Corso', 
-                pnl: 0
-            });
-            
-            closeBetModal();
-            saveToStorage();
-            updateBankrollDisplay();
-            switchTab('giocate');
-            updateGiocateTab();
-        }
-
-        function updateMatchStatus(betId, newStatus) {
-            const target = placedBets.find(b => b.id === betId);
-            if (!target) return;
-            target.status = newStatus;
-            
-            if (target.type === 'Punta') {
-                target.pnl = newStatus === 'Vinta' ? target.stake * (target.odds - 1) : (newStatus === 'Persa' ? -target.stake : 0);
-            } else { // Bancata Lay: se vinta (bancata corretta) incassi lo stake, se persa perdi la responsabilità (stake * (odds - 1))
-                const liability = target.stake * (target.odds - 1);
-                target.pnl = newStatus === 'Vinta' ? target.stake : -liability;
-            }
-
-            saveToStorage();
-            updateBankrollDisplay();
-            updateGiocateTab();
-            updateProgressioneTab();
-        }
-
-        function updateGiocateTab() {
-            const tbody = document.getElementById('bets-table-body');
-            document.getElementById('stats-total').textContent = placedBets.length;
-            const totalStake = placedBets.reduce((acc, b) => acc + b.stake, 0);
-            const totalPnL = placedBets.reduce((acc, b) => acc + b.pnl, 0);
-            const roi = totalStake > 0 ? (totalPnL / totalStake) * 100 : 0;
-            
-            document.getElementById('stats-stake').textContent = `€${totalStake.toFixed(2)}`;
-            const plElem = document.getElementById('stats-pl');
-            plElem.textContent = `€${totalPnL.toFixed(2)}`;
-            plElem.className = `text-lg font-bold font-mono ${totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-            const roiElem = document.getElementById('stats-roi');
-            roiElem.textContent = `${roi.toFixed(2)}%`;
-            roiElem.className = `text-lg font-bold font-mono ${roi >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-
-            if (placedBets.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500 italic">Nessuna giocata registrata.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = placedBets.map(b => `
-                <tr class="border-b border-slate-800/50">
-                    <td class="py-2.5">${b.match}</td>
-                    <td class="py-2.5 text-emerald-400 font-bold">${b.side}</td>
-                    <td class="py-2.5 font-bold">${b.odds.toFixed(2)}</td>
-                    <td class="py-2.5">€${b.stake.toFixed(2)}</td>
-                    <td class="py-2.5">
-                        <select onchange="updateMatchStatus(${b.id}, this.value)" class="bg-slate-900 border border-slate-700 text-xs rounded px-1.5 py-0.5 text-slate-200">
-                            <option value="In Corso" ${b.status === 'In Corso' ? 'selected' : ''}>In Corso</option>
-                            <option value="Vinta" ${b.status === 'Vinta' ? 'selected' : ''}>Vinta</option>
-                            <option value="Persa" ${b.status === 'Persa' ? 'selected' : ''}>Persa</option>
-                        </select>
-                    </td>
-                    <td class="py-2.5 font-bold ${b.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">€${b.pnl.toFixed(2)}</td>
-                </tr>
-            `).join('');
-        }
-
-        function updateProgressioneTab() {
-            document.getElementById('prog-init-bank').textContent = `€${initialBankroll.toFixed(2)}`;
-            const current = getCurrentBankroll();
-            document.getElementById('prog-current-bank').textContent = `€${current.toFixed(2)}`;
-            
-            const growth = ((current - initialBankroll) / initialBankroll) * 100;
-            const growthEl = document.getElementById('prog-growth');
-            growthEl.textContent = `${growth >= 0 ? '+' : ''}${growth.toFixed(2)}%`;
-            growthEl.className = `text-lg font-bold font-mono ${growth >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-
-            const concluded = placedBets.filter(b => b.status !== 'In Corso');
-            const won = concluded.filter(b => b.status === 'Vinta').length;
-            const winRate = concluded.length > 0 ? (won / concluded.length) * 100 : 0;
-            document.getElementById('prog-winrate').textContent = `${winRate.toFixed(1)}% (${won}/${concluded.length})`;
-
-            const chartContainer = document.getElementById('progression-chart');
-            if (concluded.length === 0) {
-                chartContainer.innerHTML = `<div class="text-slate-500 italic text-xs py-2">Nessuna scommessa conclusa. Completa almeno una giocata (Vinta/Persa) per visualizzare l'andamento della cassa.</div>`;
-                return;
-            }
-
-            let runningBank = initialBankroll;
-            let chartHtml = `<div class="flex justify-between border-b border-slate-800 pb-1 text-slate-400 font-bold"><span>Evento / Match</span><span>Cassa risultante</span></div>`;
-            
-            concluded.forEach((b, idx) => {
-                runningBank += b.pnl;
-                const isPlus = b.pnl >= 0;
-                chartHtml += `
-                    <div class="flex justify-between items-center py-1.5 border-b border-slate-900">
-                        <span class="text-slate-300 truncate max-w-[220px]">#${idx+1} ${b.match} (${b.side})</span>
-                        <span class="font-bold ${isPlus ? 'text-emerald-400' : 'text-red-400'}">€${runningBank.toFixed(2)} (${isPlus ? '+' : ''}€${b.pnl.toFixed(2)})</span>
-                    </div>
-                `;
-            });
-            chartContainer.innerHTML = chartHtml;
-        }
-
-        function renderApp(filterText = "") {
-            const matchesContainer = document.getElementById('matches-container');
-            const oppContainer = document.getElementById('opportunities-container');
-            
-            matchesContainer.innerHTML = '';
-            oppContainer.innerHTML = '';
-
-            const processed = processMatches();
-            const query = filterText.toLowerCase();
-            const filtered = processed.filter(m => 
-                m.player1.toLowerCase().includes(query) || 
-                m.player2.toLowerCase().includes(query) || 
-                m.tournament.toLowerCase().includes(query)
-            );
-
-            document.getElementById('match-count').textContent = `${filtered.length} match`;
-            
-            // Raccogliamo tutte le opportunità (sia Punta che Banca per entrambi i giocatori)
-            let opportunities = [];
-            filtered.forEach(m => {
-                if (m.isValPunta1) opportunities.push({ match: m, type: 'Punta', playerNum: 1, player: m.player1, odds: m.baseOdds1, fair: m.fairOdds1 });
-                if (m.isValPunta2) opportunities.push({ match: m, type: 'Punta', playerNum: 2, player: m.player2, odds: m.baseOdds2, fair: m.fairOdds2 });
-                if (m.isValLay1) opportunities.push({ match: m, type: 'Banca', playerNum: 1, player: m.player1, odds: m.baseOdds1, fair: m.fairOdds1 });
-                if (m.isValLay2) opportunities.push({ match: m, type: 'Banca', playerNum: 2, player: m.player2, odds: m.baseOdds2, fair: m.fairOdds2 });
-            });
-
-            document.getElementById('opp-count').textContent = `${opportunities.length} opportunità`;
-
-            if (opportunities.length === 0) {
-                oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna opportunità di valore o bancata rilevata al momento. Clicca su Aggiorna.</div>';
+            document.getElementById('bet-modal').classList.add('flex');
+            if(prefill) {
+                document.getElementById('modal-title').innerText = `Registra Giocata (${prefill.action})`;
+                document.getElementById('modal-match').value = prefill.match || '';
+                document.getElementById('modal-market').value = prefill.market || '';
+                document.getElementById('modal-odds').value = prefill.odds || '';
+                document.getElementById('modal-stake').value = prefill.stake || '';
+                document.getElementById('modal-status').value = 'pending';
+                document.getElementById('modal-bet-id').value = '';
             } else {
-                opportunities.forEach(opp => {
-                    const card = document.createElement('div');
-                    card.className = "bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-3 flex justify-between items-center text-xs";
-                    const isLay = opp.type === 'Banca';
-                    card.innerHTML = `
-                        <div>
-                            <div class="text-slate-400 font-medium">${opp.match.tournament} <span class="text-slate-500">(${opp.match.surface})</span></div>
-                            <div class="text-white font-bold text-sm mt-0.5">
-                                ${isLay ? '🛡️ Banca (Lay)' : '🎯 Punta'} <span class="text-emerald-400">${opp.player}</span> @ <span class="underline">${opp.odds}</span> <span class="text-slate-400 font-normal">(Equa: ${opp.fair})</span>
-                            </div>
-                        </div>
-                        <button onclick="openBetModal(${opp.match.id}, '${opp.type}', ${opp.playerNum}, ${opp.odds})" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg transition shadow">Seleziona</button>
-                    `;
-                    oppContainer.appendChild(card);
-                });
+                document.getElementById('modal-title').innerText = "Aggiungi Scommessa Manuale";
+                document.getElementById('modal-bet-form').reset();
+                document.getElementById('modal-bet-id').value = '';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('bet-modal').classList.add('hidden');
+            document.getElementById('bet-modal').classList.remove('flex');
+        }
+
+        function saveModalBet(e) {
+            e.preventDefault();
+            const id = document.getElementById('modal-bet-id').value;
+            const betData = {
+                id: id ? parseInt(id) : Date.now(),
+                date: new Date().toISOString().split('T')[0],
+                match: document.getElementById('modal-match').value,
+                market: document.getElementById('modal-market').value,
+                odds: parseFloat(document.getElementById('modal-odds').value),
+                stake: parseFloat(document.getElementById('modal-stake').value),
+                status: document.getElementById('modal-status').value
+            };
+
+            if(id) {
+                const idx = appData.bets.findIndex(b => b.id === betData.id);
+                if(idx !== -1) appData.bets[idx] = betData;
+            } else {
+                appData.bets.push(betData);
             }
 
-            filtered.forEach(m => {
-                const card = document.createElement('div');
-                card.className = "bg-slate-800/30 border border-slate-700/50 rounded-xl p-3.5 space-y-3";
-                card.innerHTML = `
-                    <div class="flex justify-between items-center text-xs text-slate-400 border-b border-slate-800 pb-2">
-                        <span class="font-bold text-slate-300">${m.tournament} <span class="text-emerald-400 font-normal">(${m.surface})</span></span>
-                        <span class="font-mono bg-slate-900 px-2 py-0.5 rounded text-slate-300">${m.time}</span>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        <!-- Player 1 -->
-                        <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
-                            <div class="flex justify-between items-center">
-                                <span class="font-bold text-white text-sm">${m.player1}</span>
-                                <div class="flex gap-1">
-                                    ${m.isValPunta1 ? '<span class="text-emerald-400 font-bold">🎯 PUNTA</span>' : ''}
-                                    ${m.isValLay1 ? '<span class="text-amber-400 font-bold">🛡️ BANCA</span>' : ''}
-                                </div>
-                            </div>
-                            <div class="flex justify-between font-mono text-slate-300">
-                                <span>Mercato: <strong class="text-emerald-400">${m.baseOdds1}</strong></span>
-                                <span>Quota Equa: <strong class="text-amber-300">${m.fairOdds1}</strong></span>
-                            </div>
-                            <div class="flex justify-between items-center pt-1 border-t border-slate-800 text-slate-400">
-                                <span>Prob. Elo: <strong class="text-white">${m.prob1}%</strong></span>
-                                <div class="flex gap-1.5">
-                                    <button onclick="openBetModal(${m.id}, 'Punta', 1, ${m.baseOdds1})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2 py-1 rounded font-bold">Punta</button>
-                                    <button onclick="openBetModal(${m.id}, 'Banca', 1, ${m.baseOdds1})" class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-2 py-1 rounded font-bold">Banca</button>
-                                </div>
-                            </div>
-                        </div>
+            closeModal();
+            saveData();
+        }
 
-                        <!-- Player 2 -->
-                        <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
-                            <div class="flex justify-between items-center">
-                                <span class="font-bold text-white text-sm">${m.player2}</span>
-                                <div class="flex gap-1">
-                                    ${m.isValPunta2 ? '<span class="text-emerald-400 font-bold">🎯 PUNTA</span>' : ''}
-                                    ${m.isValLay2 ? '<span class="text-amber-400 font-bold">🛡️ BANCA</span>' : ''}
-                                </div>
-                            </div>
-                            <div class="flex justify-between font-mono text-slate-300">
-                                <span>Mercato: <strong class="text-emerald-400">${m.baseOdds2}</strong></span>
-                                <span>Quota Equa: <strong class="text-amber-300">${m.fairOdds2}</strong></span>
-                            </div>
-                            <div class="flex justify-between items-center pt-1 border-t border-slate-800 text-slate-400">
-                                <span>Prob. Elo: <strong class="text-white">${m.prob2}%</strong></span>
-                                <div class="flex gap-1.5">
-                                    <button onclick="openBetModal(${m.id}, 'Punta', 2, ${m.baseOdds2})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2 py-1 rounded font-bold">Punta</button>
-                                    <button onclick="openBetModal(${m.id}, 'Banca', 2, ${m.baseOdds2})" class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-2 py-1 rounded font-bold">Banca</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        function deleteBet(id) {
+            if(confirm('Eliminare questa scommessa dallo storico?')) {
+                appData.bets = appData.bets.filter(b => b.id !== id);
+                saveData();
+            }
+        }
+
+        function editBet(id) {
+            const bet = appData.bets.find(b => b.id === id);
+            if(!bet) return;
+            openManualBetModal();
+            document.getElementById('modal-title').innerText = "Modifica Scommessa";
+            document.getElementById('modal-bet-id').value = bet.id;
+            document.getElementById('modal-match').value = bet.match;
+            document.getElementById('modal-market').value = bet.market;
+            document.getElementById('modal-odds').value = bet.odds;
+            document.getElementById('modal-stake').value = bet.stake;
+            document.getElementById('modal-status').value = bet.status;
+        }
+
+        function updateInitialBankroll(e) {
+            e.preventDefault();
+            const val = parseFloat(document.getElementById('input-initial-bank').value);
+            if(!isNaN(val)) {
+                appData.initialBankroll = val;
+                saveData();
+                alert('Bankroll iniziale aggiornato con successo!');
+            }
+        }
+
+        function renderAll() {
+            renderHeaderAndDashboard();
+            renderPalinsesto();
+            renderBets();
+            renderCharts();
+        }
+
+        function renderHeaderAndDashboard() {
+            const currentBank = getCurrentBankroll();
+            const totalProfit = currentBank - appData.initialBankroll;
+            let totalBets = appData.bets.length;
+            let settledBets = appData.bets.filter(b => b.status === 'win' || b.status === 'loss');
+            let wins = appData.bets.filter(b => b.status === 'win').length;
+            let winRate = settledBets.length > 0 ? (wins / settledBets.length) * 100 : 0;
+            let totalStaked = appData.bets.reduce((acc, b) => acc + (b.status !== 'void' ? b.stake : 0), 0);
+            let roi = totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0;
+
+            document.getElementById('header-bankroll').innerText = `€ ${currentBank.toFixed(2)}`;
+            const roiEl = document.getElementById('header-roi');
+            roiEl.innerText = `${roi.toFixed(2)}%`;
+            roiEl.className = `font-bold ${roi >= 0 ? 'text-brand-500' : 'text-red-400'}`;
+
+            document.getElementById('dash-initial-bank').innerText = `€ ${appData.initialBankroll.toFixed(2)}`;
+            const profitEl = document.getElementById('dash-profit');
+            profitEl.innerText = `€ ${totalProfit.toFixed(2)}`;
+            profitEl.className = `text-2xl font-bold mt-1 ${totalProfit >= 0 ? 'text-brand-500' : 'text-red-400'}`;
+            document.getElementById('dash-winrate').innerText = `${winRate.toFixed(1)}%`;
+            document.getElementById('dash-total-bets').innerText = totalBets;
+        }
+
+        function renderPalinsesto() {
+            const tbody = document.getElementById('palinsesto-table-body');
+            tbody.innerHTML = '';
+            if(appData.palinsesto.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500">Nessuna partita analizzata nel palinsesto.</td></tr>`;
+                return;
+            }
+
+            appData.palinsesto.forEach(item => {
+                const isPunta = item.action === 'PUNTA';
+                const actionBadge = isPunta 
+                    ? `<span class="bg-emerald-500 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs shadow-md inline-flex items-center gap-1">🟢 PUNTA</span>`
+                    : `<span class="bg-amber-500 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs shadow-md inline-flex items-center gap-1">🟠 BANCA</span>`;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-dark-700/40 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-3 font-medium text-white">${item.match}</td>
+                    <td class="p-3 text-slate-300">${item.market}</td>
+                    <td class="p-3 font-semibold text-slate-200">@${item.odds.toFixed(2)}</td>
+                    <td class="p-3 text-cyan-400 font-semibold">@${item.fairOdds}</td>
+                    <td class="p-3 text-slate-300">${item.prob}%</td>
+                    <td class="p-3">${actionBadge}</td>
+                    <td class="p-3 font-bold text-white">€ ${item.stake}</td>
+                    <td class="p-3 text-right space-x-2">
+                        <button onclick="betFromPalinsesto(${item.id})" class="bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 px-2.5 py-1 rounded-lg text-xs font-semibold">Registra</button>
+                        <button onclick="deletePalinsestoItem(${item.id})" class="text-red-400 hover:underline text-xs">Elimina</button>
+                    </td>
                 `;
-                matchesContainer.appendChild(card);
+                tbody.appendChild(tr);
             });
         }
 
-        document.getElementById('search-input').addEventListener('input', (e) => renderApp(e.target.value));
-        document.addEventListener('DOMContentLoaded', () => {
-            updateBankrollDisplay();
-            renderApp();
-            updateGiocateTab();
-            updateProgressioneTab();
-        });
+        function renderCharts() {
+            let labels = ['Inizio'];
+            let dataPoints = [appData.initialBankroll];
+            let runningBank = appData.initialBankroll;
+
+            const sortedBets = [...appData.bets].sort((a,b) => new Date(a.date) - new Date(b.date));
+            sortedBets.forEach(bet => {
+                if(bet.status === 'win') runningBank += (bet.odds - 1) * bet.stake;
+                if(bet.status === 'loss') runningBank -= bet.stake;
+                if(bet.status !== 'pending') {
+                    labels.push(bet.date);
+                    dataPoints.push(runningBank);
+                }
+            });
+
+            const ctxBank = document.getElementById('bankrollChart').getContext('2d');
+            if(bankrollChartInstance) bankrollChartInstance.destroy();
+            bankrollChartInstance = new Chart(ctxBank, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Bankroll (€)',
+                        data: dataPoints,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+
+            let wins = appData.bets.filter(b => b.status === 'win').length;
+            let losses = appData.bets.filter(b => b.status === 'loss').length;
+            let voids = appData.bets.filter(b => b.status === 'void').length;
+            let pendings = appData.bets.filter(b => b.status === 'pending').length;
+
+            const ctxStatus = document.getElementById('statusChart').getContext('2d');
+            if(statusChartInstance) statusChartInstance.destroy();
+            statusChartInstance = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Vinte', 'Perse', 'Rimborsi', 'Pendenti'],
+                    datasets: [{
+                        data: [wins, losses, voids, pendings],
+                        backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#64748b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12 } } }
+                }
+            });
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `value_desk_backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData(event) {
+            const fileReader = new FileReader();
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0], "UTF-8");
+                fileReader.onload = (e) => {
+                    try {
+                        const parsed = JSON.parse(e.target.result);
+                        if(parsed && parsed.initialBankroll !== undefined) {
+                            appData = parsed;
+                            saveData();
+                            alert('Backup importato con successo!');
+                        } else { alert('File di backup non valido.'); }
+                    } catch (err) { alert('Errore durante la lettura del file JSON.'); }
+                };
+            }
+        }
+
+        function resetAllData() {
+            if(confirm('ATTENZIONE: Verranno eliminati tutti i dati salvati. Vuoi procedere?')) {
+                localStorage.removeItem('value_desk_data');
+                appData = { initialBankroll: 1000, palinsesto: [], bets: [] };
+                loadData();
+            }
+        }
+
+        window.onload = loadData;
     </script>
 </body>
 </html>
