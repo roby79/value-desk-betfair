@@ -15,8 +15,12 @@
             <span class="text-xs text-slate-400 font-mono">| Live Tennis Bookmaker Analysis</span>
         </div>
         <div class="flex items-center gap-3">
+            <div class="bg-slate-900 border border-slate-700 px-3 py-1 rounded-lg text-xs font-mono flex items-center gap-2">
+                <span>Cassa: <strong id="header-bankroll" class="text-emerald-400">€1,000.00</strong></span>
+                <button onclick="openBankrollModal()" class="text-slate-400 hover:text-white">✏️</button>
+            </div>
             <button onclick="refreshLiveData()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3 py-1 text-xs rounded-lg font-mono flex items-center gap-1.5 transition">
-                🔄 <span id="refresh-text">Aggiorna Match</span>
+                🔄 <span id="refresh-text">Aggiorna</span>
             </button>
             <div class="flex gap-2">
                 <button onclick="switchTab('palinsesto')" id="btn-palinsesto" class="px-3 py-1 text-xs font-medium rounded-lg bg-emerald-500 text-slate-950 transition">Palinsesto</button>
@@ -49,9 +53,13 @@
 
         <!-- TAB 2: OCCASIONI -->
         <div id="tab-occasioni" class="space-y-6 hidden">
+            <div class="bg-emerald-950/20 border border-emerald-500/20 p-3 rounded-xl text-xs text-slate-300">
+                💡 <strong class="text-emerald-400">Filtro Strategico Attivo:</strong> Qui trovi solo le opportunità conformi al piano (Quote tra <strong class="text-white">1.50 e 2.80</strong> con margine di valore sul modello Elo). Lo stake suggerito è calcolato automaticamente all'1.5% della cassa attuale.
+            </div>
+
             <section class="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4 shadow-xl space-y-4">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Opportunità a Valore (+EV)</h2>
+                    <h2 class="text-md font-semibold text-emerald-400 flex items-center gap-2">🎯 Opportunità a Valore (+EV Sostenibili)</h2>
                     <span id="opp-count" class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800 px-2.5 py-0.5 rounded-full font-mono">0 opportunità</span>
                 </div>
                 <div id="opportunities-container" class="space-y-3">
@@ -64,8 +72,8 @@
         <div id="tab-giocate" class="space-y-6 hidden">
             <section class="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-xl space-y-4">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h2 class="text-md font-semibold text-emerald-400">📊 Storico Giocate & ROI</h2>
-                    <div class="text-xs font-mono text-slate-400">Cassa Iniziale: <strong class="text-white">€1,000.00</strong></div>
+                    <h2 class="text-md font-semibold text-emerald-400">📊 Storico Giocate & Piano Cassa</h2>
+                    <div class="text-xs font-mono text-slate-400">Cassa Attuale: <strong id="stats-current-bank" class="text-emerald-400">€1,000.00</strong></div>
                 </div>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -113,7 +121,7 @@
     <div id="bet-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                <h3 class="text-sm font-bold text-emerald-400">Registra Giocata</h3>
+                <h3 class="text-sm font-bold text-emerald-400">Registra Giocata sul Piano</h3>
                 <button onclick="closeBetModal()" class="text-slate-400 hover:text-white text-sm font-bold">✕</button>
             </div>
             <div id="modal-match-info" class="text-xs text-slate-300 font-mono"></div>
@@ -127,18 +135,39 @@
                     <input type="number" id="modal-odds" step="0.01" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 font-mono">
                 </div>
                 <div>
-                    <label class="block text-slate-400 mb-1">Stake (€)</label>
-                    <input type="number" id="modal-stake" value="10" step="1" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 font-mono">
+                    <label class="block text-slate-400 mb-1">Stake Consigliato (1.5% Cassa)</label>
+                    <input type="number" id="modal-stake" step="0.5" class="w-full bg-slate-950 border border-emerald-500/50 rounded px-3 py-2 text-emerald-400 font-bold font-mono">
                 </div>
             </div>
             <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
                 <button onclick="closeBetModal()" class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">Annulla</button>
-                <button onclick="confirmBet()" class="px-4 py-1.5 rounded bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400">Conferma</button>
+                <button onclick="confirmBet()" class="px-4 py-1.5 rounded bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400">Conferma nel Piano</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Modifica Cassa -->
+    <div id="bankroll-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="text-sm font-bold text-emerald-400">Modifica Cassa Iniziale</h3>
+                <button onclick="closeBankrollModal()" class="text-slate-400 hover:text-white text-sm font-bold">✕</button>
+            </div>
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Nuovo Bankroll Totale (€)</label>
+                    <input type="number" id="input-new-bankroll" step="10" class="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-slate-200 font-mono">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                <button onclick="closeBankrollModal()" class="px-3 py-1.5 rounded bg-slate-800 text-slate-300 text-xs font-medium">Annulla</button>
+                <button onclick="saveNewBankroll()" class="px-4 py-1.5 rounded bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400">Salva</button>
             </div>
         </div>
     </div>
 
     <script>
+        let initialBankroll = 1000.00;
         let matchesData = [
             {
                 id: 301,
@@ -146,10 +175,10 @@
                 surface: "hard",
                 time: "11:00",
                 player1: "Valentin Vacherot",
-                odds1: 1.45,
+                odds1: 1.62,
                 eloOverall1: 1950, eloSurface1: 1970, eloRecent1: 1960, surfaceMatchesCount1: 32, gameWinAvg1: 55.2,
                 player2: "Aleksandar Kovacevic",
-                odds2: 2.80,
+                odds2: 2.30,
                 eloOverall2: 1850, eloSurface2: 1840, eloRecent2: 1845, surfaceMatchesCount2: 25, gameWinAvg2: 49.0
             },
             {
@@ -158,10 +187,10 @@
                 surface: "hard",
                 time: "12:30",
                 player1: "Hubert Hurkacz",
-                odds1: 1.30,
+                odds1: 1.25,
                 eloOverall1: 2080, eloSurface1: 2110, eloRecent1: 2095, surfaceMatchesCount1: 50, gameWinAvg1: 57.0,
                 player2: "Denis Shapovalov",
-                odds2: 3.50,
+                odds2: 3.80,
                 eloOverall2: 1890, eloSurface2: 1880, eloRecent2: 1885, surfaceMatchesCount2: 38, gameWinAvg2: 47.5
             },
             {
@@ -170,10 +199,10 @@
                 surface: "hard",
                 time: "14:00",
                 player1: "Daniil Medvedev",
-                odds1: 1.22,
+                odds1: 1.18,
                 eloOverall1: 2160, eloSurface1: 2190, eloRecent1: 2175, surfaceMatchesCount1: 60, gameWinAvg1: 59.0,
                 player2: "Adam Walton",
-                odds2: 4.40,
+                odds2: 5.00,
                 eloOverall2: 1780, eloSurface2: 1770, eloRecent2: 1775, surfaceMatchesCount2: 18, gameWinAvg2: 44.5
             },
             {
@@ -182,16 +211,46 @@
                 surface: "hard",
                 time: "15:30",
                 player1: "Andrey Rublev",
-                odds1: 1.40,
+                odds1: 1.58,
                 eloOverall1: 2040, eloSurface1: 2060, eloRecent1: 2050, surfaceMatchesCount1: 45, gameWinAvg1: 54.8,
                 player2: "Roman Safiullin",
-                odds2: 3.00,
+                odds2: 2.45,
                 eloOverall2: 1870, eloSurface2: 1860, eloRecent2: 1865, surfaceMatchesCount2: 29, gameWinAvg2: 48.2
             }
         ];
 
         let placedBets = [];
         let activeBetContext = null;
+
+        function getCurrentBankroll() {
+            const totalPnL = placedBets.reduce((acc, b) => acc + b.pnl, 0);
+            return initialBankroll + totalPnL;
+        }
+
+        function updateBankrollDisplay() {
+            const current = getCurrentBankroll();
+            document.getElementById('header-bankroll').textContent = `€${current.toFixed(2)}`;
+            document.getElementById('stats-current-bank').textContent = `€${current.toFixed(2)}`;
+        }
+
+        function openBankrollModal() {
+            document.getElementById('input-new-bankroll').value = getCurrentBankroll().toFixed(2);
+            document.getElementById('bankroll-modal').classList.remove('hidden');
+        }
+
+        function closeBankrollModal() {
+            document.getElementById('bankroll-modal').classList.add('hidden');
+        }
+
+        function saveNewBankroll() {
+            const newVal = parseFloat(document.getElementById('input-new-bankroll').value);
+            if (!newVal || newVal <= 0) return alert("Inserisci un valore valido.");
+            const currentPnL = placedBets.reduce((acc, b) => acc + b.pnl, 0);
+            initialBankroll = newVal - currentPnL;
+            closeBankrollModal();
+            updateBankrollDisplay();
+            updateGiocateTab();
+        }
 
         function switchTab(tab) {
             document.getElementById('tab-palinsesto').classList.toggle('hidden', tab !== 'palinsesto');
@@ -206,7 +265,7 @@
         function refreshLiveData() {
             const btnText = document.getElementById('refresh-text');
             btnText.textContent = "Aggiornato!";
-            setTimeout(() => { btnText.textContent = "Aggiorna Match"; }, 1500);
+            setTimeout(() => { btnText.textContent = "Aggiorna"; }, 1500);
             renderApp(document.getElementById('search-input').value);
         }
 
@@ -228,13 +287,14 @@
                 const prob1 = 0.5 + (rawProb1 - 0.5) * 0.90;
                 const prob2 = 1 - prob1;
 
-                // Quota minima che il bookmaker dovrebbe offrire affinché sia in pari (1 / prob)
                 const minOdds1 = 1 / prob1;
                 const minOdds2 = 1 / prob2;
 
-                const targetEV = 0.02; // Margine di valore minimo
-                const isValue1 = match.odds1 >= (minOdds1 * (1 + targetEV));
-                const isValue2 = match.odds2 >= (minOdds2 * (1 + targetEV));
+                const targetEV = 0.03; // 3% di margine di valore minimo
+                
+                // Filtro strategico: quota book tra 1.50 e 2.80 + valore +EV
+                const isValue1 = match.odds1 >= 1.50 && match.odds1 <= 2.80 && match.odds1 >= (minOdds1 * (1 + targetEV));
+                const isValue2 = match.odds2 >= 1.50 && match.odds2 <= 2.80 && match.odds2 >= (minOdds2 * (1 + targetEV));
 
                 return {
                     ...match,
@@ -255,6 +315,11 @@
             document.getElementById('modal-match-info').textContent = `${match.tournament} (${match.surface}): ${match.player1} vs ${match.player2}`;
             document.getElementById('modal-side').value = sideText;
             document.getElementById('modal-odds').value = defaultOdds;
+            
+            // Stake automatico all'1.5% della cassa attuale
+            const suggestedStake = Math.round(getCurrentBankroll() * 0.015);
+            document.getElementById('modal-stake').value = suggestedStake > 0 ? suggestedStake : 10;
+            
             document.getElementById('bet-modal').classList.remove('hidden');
         }
 
@@ -277,6 +342,7 @@
                 odds, stake, status: 'In Corso', pnl: 0
             });
             closeBetModal();
+            updateBankrollDisplay();
             switchTab('giocate');
             updateGiocateTab();
         }
@@ -286,6 +352,7 @@
             if (!target) return;
             target.status = newStatus;
             target.pnl = newStatus === 'Vinta' ? target.stake * (target.odds - 1) : (newStatus === 'Persa' ? -target.stake : 0);
+            updateBankrollDisplay();
             updateGiocateTab();
         }
 
@@ -305,7 +372,7 @@
             roiElem.className = `text-lg font-bold font-mono ${roi >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
 
             if (placedBets.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500 italic">Nessuna giocata registrata.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500 italic">Nessuna giocata registrata nel piano.</td></tr>`;
                 return;
             }
 
@@ -347,7 +414,7 @@
             document.getElementById('opp-count').textContent = `${opportunities.length} opportunità`;
 
             if (opportunities.length === 0) {
-                oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna quota supera la soglia minima del modello al momento.</div>';
+                oppContainer.innerHTML = '<div class="text-slate-500 italic text-sm py-2">Nessuna quota rientra nel range strategico 1.50 - 2.80 con valore +EV al momento.</div>';
             } else {
                 opportunities.forEach(m => {
                     const bestPlayer = m.isValue1 ? m.player1 : m.player2;
@@ -361,7 +428,7 @@
                             <div class="text-slate-400 font-medium">${m.tournament} <span class="text-slate-500">(${m.surface})</span></div>
                             <div class="text-white font-bold text-sm mt-0.5">🎯 Punta <span class="text-emerald-400">${bestPlayer}</span> @ <span class="underline">${bestOdds}</span> <span class="text-slate-400 font-normal">(Quota equa stimata: ${minOdds})</span></div>
                         </div>
-                        <button onclick="openBetModal(${m.id}, 'Punta ${bestPlayer}', ${bestOdds})" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg transition">Gioca</button>
+                        <button onclick="openBetModal(${m.id}, 'Punta ${bestPlayer}', ${bestOdds})" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg transition">Gioca nel Piano</button>
                     `;
                     oppContainer.appendChild(card);
                 });
@@ -381,14 +448,14 @@
                         <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
                             <div class="flex justify-between items-center">
                                 <span class="font-bold text-white text-sm">${m.player1}</span>
-                                ${m.isValue1 ? '<span class="text-emerald-400 font-bold">🎯 VALUE OK</span>' : '<span class="text-slate-500">Sotto Quota</span>'}
+                                ${m.isValue1 ? '<span class="text-emerald-400 font-bold">🎯 STRATEGIC VALUE</span>' : '<span class="text-slate-500">Fuori Range / No EV</span>'}
                             </div>
                             <div class="flex justify-between font-mono text-slate-300">
                                 <span>Quota Book: <strong class="text-emerald-400">${m.odds1}</strong></span>
                                 <span>Quota Equa Modello: <strong class="text-amber-300">${m.minOdds1}</strong></span>
                             </div>
                             <div class="flex justify-between items-center pt-1 border-t border-slate-800 text-slate-400">
-                                <span>Prob. Statistica Elo: <strong class="text-white">${m.prob1}%</strong></span>
+                                <span>Prob. Elo: <strong class="text-white">${m.prob1}%</strong></span>
                                 <button onclick="openBetModal(${m.id}, 'Punta ${m.player1}', ${m.odds1})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2 py-0.5 rounded">Punta</button>
                             </div>
                         </div>
@@ -397,14 +464,14 @@
                         <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80 space-y-2">
                             <div class="flex justify-between items-center">
                                 <span class="font-bold text-white text-sm">${m.player2}</span>
-                                ${m.isValue2 ? '<span class="text-emerald-400 font-bold">🎯 VALUE OK</span>' : '<span class="text-slate-500">Sotto Quota</span>'}
+                                ${m.isValue2 ? '<span class="text-emerald-400 font-bold">🎯 STRATEGIC VALUE</span>' : '<span class="text-slate-500">Fuori Range / No EV</span>'}
                             </div>
                             <div class="flex justify-between font-mono text-slate-300">
                                 <span>Quota Book: <strong class="text-emerald-400">${m.odds2}</strong></span>
                                 <span>Quota Equa Modello: <strong class="text-amber-300">${m.minOdds2}</strong></span>
                             </div>
                             <div class="flex justify-between items-center pt-1 border-t border-slate-800 text-slate-400">
-                                <span>Prob. Statistica Elo: <strong class="text-white">${m.prob2}%</strong></span>
+                                <span>Prob. Elo: <strong class="text-white">${m.prob2}%</strong></span>
                                 <button onclick="openBetModal(${m.id}, 'Punta ${m.player2}', ${m.odds2})" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2 py-0.5 rounded">Punta</button>
                             </div>
                         </div>
@@ -415,7 +482,10 @@
         }
 
         document.getElementById('search-input').addEventListener('input', (e) => renderApp(e.target.value));
-        document.addEventListener('DOMContentLoaded', () => renderApp());
+        document.addEventListener('DOMContentLoaded', () => {
+            updateBankrollDisplay();
+            renderApp();
+        });
     </script>
 </body>
 </html>
