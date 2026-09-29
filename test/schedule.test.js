@@ -11,6 +11,14 @@ test('a "live streams" ticker header is treated as unidentified, and unidentifie
  const html='<span class="tab">28. 09. 2026</span><tr class="head"><td>13:30 Live streams bet365 Unibet</td></tr>'+row();
  assert.equal(parseSchedule(html,new Date('2026-09-28T11:00Z')).length,0);
 });
+test('matches without a real published market (empty odds cells) are filtered out',()=>{
+ const now=new Date('2026-09-28T11:00Z');
+ const noOddsRow=(time='14:00')=>`<tr><td class="time">${time}</td><td><a href="/player/a/">A</a></td><td class="result"></td><td class="course"></td><td class="course"></td></tr><tr><td><a href="/player/b/">B</a></td><td class="result"></td></tr>`;
+ const withNoOdds='<span class="tab">28. 09. 2026</span><tr class="head"><td>Rotterdam</td></tr>'+noOddsRow();
+ assert.equal(parseSchedule(withNoOdds,now).length,0);
+ const withOdds='<span class="tab">28. 09. 2026</span><tr class="head"><td>Rotterdam</td></tr>'+row();
+ assert.equal(parseSchedule(withOdds,now).length,1);
+});
 test('minor tournaments (and unidentified ones) are filtered out entirely',()=>{
  const now=new Date('2026-09-28T11:00Z');
  const minorNames=['Futures 2026','UTR Pro Tennis Series 3','Antalya 6 ITF','Roma M15'];
