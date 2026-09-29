@@ -1,9 +1,1 @@
-{
-  "name": "value-desk",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "test": "node --test test/*.test.js",
-    "build": "echo 'Build completato'"
-  }
-}
+{"name":"value-desk","private":true,"type":"module","scripts":{"test":"node --test test/*.test.js"}}

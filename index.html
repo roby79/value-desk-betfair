@@ -287,21 +287,57 @@
         // Stessa logica di lib/source.js:estimateProbability, duplicata qui perché
         // questa pagina è uno script inline (non un modulo) e non importa dal
         // server - va tenuta allineata se la formula cambia lato server.
-        function estimateProbabilityClient(a, b) {
+        // Stessa logica del modulo condiviso lib/elo.js, duplicata qui perché
+        // questa pagina è uno script inline (non un modulo ES) e non importa
+        // dal server - va tenuta allineata se la formula cambia lato server.
+        // Combina tre componenti (bilancio stagionale, ranking, Elo dalle
+        // ultime partite) più un correttivo sui precedenti diretti.
+        function estimateProbabilityClient(a, b, aName, bName) {
             const pair = s => { const m = s && String(s).match(/^(\d+)\/(\d+)$/); return m ? {w:+m[1], l:+m[2]} : null; };
             const rankShare = (a.rank && b.rank) ? (1/a.rank)/(1/a.rank+1/b.rank) : null;
             const sA = a.seasonColumns && pair(a.seasonColumns[1]), sB = b.seasonColumns && pair(b.seasonColumns[1]);
             const rate = p => p ? (p.w+1)/(p.w+p.l+2) : null;
             const rA = rate(sA), rB = rate(sB);
             const seasonShare = (rA != null && rB != null) ? rA/(rA+rB) : null;
-            const recentRate = m => (!m || !m.length) ? null : (m.filter(x=>x.won).length+1)/(m.length+2);
-            const reA = recentRate(a.recent), reB = recentRate(b.recent);
-            const recentShare = (reA != null && reB != null) ? reA/(reA+reB) : null;
-            const parts = [[0.55,seasonShare],[0.25,rankShare],[0.20,recentShare]].filter(([,v])=>v!=null);
-            if (!parts.length) return { prob:null, reason:'Dati insufficienti (ranking, bilancio stagionale o recente mancanti).' };
+
+            // Elo ricostruito rigiocando le ultime partite (dalla più vecchia),
+            // assumendo 1500 per ogni avversario storico - non conosciamo il
+            // loro Elo reale, quindi li trattiamo come nella media.
+            const eloFromRecent = recent => {
+                if (!recent || !recent.length) return null;
+                let elo = 1500;
+                [...recent].reverse().forEach(m => {
+                    const expected = 1 / (1 + Math.pow(10, (1500 - elo) / 400));
+                    elo += 20 * ((m.won ? 1 : 0) - expected);
+                });
+                return elo;
+            };
+            const eloA = eloFromRecent(a.recent), eloB = eloFromRecent(b.recent);
+            const eloShare = (eloA != null && eloB != null) ? 1/(1+Math.pow(10,(eloB-eloA)/400)) : null;
+
+            const parts = [[0.45,seasonShare],[0.25,rankShare],[0.30,eloShare]].filter(([,v])=>v!=null);
+            if (!parts.length) return { prob:null, reason:'Dati insufficienti (ranking, bilancio stagionale o storico recente mancanti).' };
             const totalW = parts.reduce((s,[w])=>s+w,0);
-            const prob = parts.reduce((s,[w,v])=>s+w*v,0)/totalW;
-            return { prob, componentsUsed:parts.length, reason: parts.length<3 ? 'Stima parziale: manca '+(3-parts.length)+' componente su 3 (superficie usata come bilancio aggregato annuale, non ancora specifica per torneo).' : 'Stima completa su tutte e tre le componenti (superficie come bilancio aggregato annuale).' };
+            let prob = parts.reduce((s,[w,v])=>s+w*v,0)/totalW;
+
+            // Correttivo sui precedenti diretti, se lo storico recente di A
+            // include scontri con B (max ±5 punti percentuali).
+            let h2hNote = '';
+            if (a.recent && bName) {
+                const scontri = a.recent.filter(m => m.opponent === bName);
+                if (scontri.length) {
+                    const vittorie = scontri.filter(m => m.won).length;
+                    const bonus = Math.max(-0.05, Math.min(0.05, (vittorie - (scontri.length - vittorie)) * 0.02));
+                    prob += bonus;
+                    h2hNote = ' Precedenti diretti ' + vittorie + '-' + (scontri.length - vittorie) + ' inclusi.';
+                }
+            }
+            prob = Math.max(0.05, Math.min(0.95, prob));
+
+            const base = parts.length < 3
+                ? 'Stima parziale: manca ' + (3-parts.length) + ' componente su 3 (stagione/ranking/Elo dalle ultime partite).'
+                : 'Stima su bilancio stagionale, ranking ed Elo dalle ultime partite (avversari storici assunti a Elo medio, non è un Elo reale su tutta la carriera).';
+            return { prob, componentsUsed:parts.length, reason: base + h2hNote };
         }
 
         async function fetchLiveMatches() {
@@ -335,7 +371,8 @@
                             const favOdds = fav1 ? item.oddsPair[0] : item.oddsPair[1];
                             const favStats = fav1 ? stats[0] : stats[1], dogStats = fav1 ? stats[1] : stats[0];
                             const favName = fav1 ? item.p1 : item.p2;
-                            const est = estimateProbabilityClient(favStats, dogStats);
+                            const dogName = fav1 ? item.p2 : item.p1;
+                            const est = estimateProbabilityClient(favStats, dogStats, favName, dogName);
                             if (est.prob == null) {
                                 item.market = 'Analisi non disponibile: ' + est.reason;
                                 item.prob = null; item.action = 'DATI INSUFFICIENTI';
@@ -565,70 +602,21 @@
 
         function escapeHTML(value) { return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         function renderPalinsesto() {
-    const tbody = document.getElementById('palinsesto-table-body');
-    tbody.innerHTML = '';
+            const tbody = document.getElementById('palinsesto-table-body');
+            tbody.innerHTML = '';
 
-    const filterText = document.getElementById('search-filter').value.toLowerCase();
-    const filtered = appData.palinsesto.filter(item => item.startsAt && Date.parse(item.startsAt) > Date.now()).filter(item =>
-        item.match.toLowerCase().includes(filterText) ||
-        item.tournament.toLowerCase().includes(filterText)
-    );
+            const filterText = document.getElementById('search-filter').value.toLowerCase();
+            const filtered = appData.palinsesto.filter(item => item.startsAt && Date.parse(item.startsAt)>Date.now()).filter(item =>
+                item.match.toLowerCase().includes(filterText) ||
+                item.tournament.toLowerCase().includes(filterText)
+            );
 
-    document.getElementById('match-count-badge').innerText = `${filtered.length} match`;
+            document.getElementById('match-count-badge').innerText = `${filtered.length} match`;
 
-    if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">Nessun match trovato. Clicca su "Aggiorna Match Reali".</td></tr>`;
-        return;
-    }
-
-    const STYLE = {
-        PUNTA: { row: 'border-l-4 border-emerald-500 bg-emerald-500/5', badge: 'bg-emerald-500 text-slate-950', label: '🟢 PUNTA' },
-        BANCA: { row: 'border-l-4 border-amber-500 bg-amber-500/5', badge: 'bg-amber-500 text-slate-950', label: '🟠 BANCA' },
-        'FUORI SOGLIA': { row: 'border-l-4 border-slate-600', badge: 'bg-slate-600 text-slate-100', label: '⚪ Fuori soglia' },
-        DEFAULT: { row: 'border-l-4 border-dark-700 opacity-60', badge: 'bg-dark-700 text-slate-400', label: null }
-    };
-
-    filtered.forEach(item => {
-        const st = STYLE[item.action] || STYLE.DEFAULT;
-
-        const signalText = item.signal || 'Nessuna azione';
-        const badge = `<span class="inline-block font-semibold px-3 py-1.5 rounded-lg text-xs shadow-md bg-blue-600 text-white">${signalText}</span>`;
-
-        const stats = item.prob != null
-            ? `<div class="flex gap-1.5 mt-1 flex-wrap" title="${escapeHTML(item.market)}">
-                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-700 text-slate-300">Mod ${item.prob}%</span>
-                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-700 text-slate-400">Book ${item.bookProb}%</span>
-                 <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${item.margin >= 3 ? 'bg-emerald-500/20 text-emerald-400' : item.margin <= -3 ? 'bg-amber-500/20 text-amber-400' : 'bg-dark-700 text-slate-400'}">${item.margin >= 0 ? '+' : ''}${item.margin.toFixed(1)}pt</span>
-               </div>`
-            : `<div class="text-[11px] text-slate-500 mt-0.5">${escapeHTML(item.market)}</div>`;
-
-        const stakeCell = item.action === 'BANCA'
-            ? (item.liability != null ? `<span class="text-amber-400">Liab. €${item.liability}</span>` : '—')
-            : (item.stake != null ? `<span class="text-emerald-400">€${item.stake}</span>` : '—');
-
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-dark-700/40 transition-colors " + st.row;
-        tr.innerHTML = `
-            <td class="p-3">
-                <span class="text-xs text-slate-400 block">${escapeHTML(item.tournament)}</span>
-                <span class="font-medium text-white">🕒 ${item.commenceTime || 'Oggi'}</span>
-            </td>
-            <td class="p-3">
-                <span class="font-bold text-white block">${escapeHTML(item.match)}</span>
-                ${stats}
-            </td>
-            <td class="p-3 font-semibold text-slate-200">@${item.odds ? parseFloat(item.odds).toFixed(2) : "—"}</td>
-            <td class="p-3 text-cyan-400 font-semibold">@${item.fairOdds ?? "—"}</td>
-            <td class="p-3">${badge}</td>
-            <td class="p-3 font-bold">${stakeCell}</td>
-            <td class="p-3 text-right space-x-2">
-                <button ${item.prob == null ? 'disabled title="Analisi non disponibile"' : ''} onclick="betFromPalinsesto('${item.id}')" class="bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 px-2.5 py-1 rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed">Registra</button>
-                <button onclick="deletePalinsestoItem('${item.id}')" class="text-red-400 hover:underline text-xs">Elimina</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
+            if(filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">Nessun match trovato. Clicca su "Aggiorna Match Reali".</td></tr>`;
+                return;
+            }
 
             // Colore/etichetta uniche per riga, cosi si scorre la tabella a
             // colpo d'occhio senza dover leggere ogni cella.
