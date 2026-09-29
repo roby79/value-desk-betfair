@@ -3,3 +3,11 @@ const row=(score='',time='14:00')=>`<tr><td class="time">${time}</td><td><a href
 test('future today, H2H does not mark started',()=>assert.equal(parseSchedule('<span class="tab">28. 09. 2026</span>'+row(),new Date('2026-09-28T11:00Z')).length,1));
 test('exclude previous day and scored matches',()=>{assert.equal(parseSchedule('<span class="tab">27. 09. 2026</span>'+row(),new Date('2026-09-28T11:00Z')).length,0);assert.equal(parseSchedule('<span class="tab">28. 09. 2026</span>'+row('1'),new Date('2026-09-28T11:00Z')).length,0)});
 test('Italian midnight',()=>assert.equal(dayOf(new Date('2026-09-28T22:30Z')),'2026-09-29'));
+test('a normal tournament header is kept as the tournament name',()=>{
+ const html='<span class="tab">28. 09. 2026</span><tr class="head"><td>Rotterdam</td></tr>'+row();
+ assert.equal(parseSchedule(html,new Date('2026-09-28T11:00Z'))[0].tournament,'Rotterdam');
+});
+test('a "live streams" ticker header is not mistaken for the tournament name',()=>{
+ const html='<span class="tab">28. 09. 2026</span><tr class="head"><td>13:30 Live streams bet365 Unibet</td></tr>'+row();
+ assert.equal(parseSchedule(html,new Date('2026-09-28T11:00Z'))[0].tournament,'Torneo non identificato');
+});
