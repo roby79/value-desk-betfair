@@ -565,21 +565,70 @@
 
         function escapeHTML(value) { return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         function renderPalinsesto() {
-            const tbody = document.getElementById('palinsesto-table-body');
-            tbody.innerHTML = '';
+    const tbody = document.getElementById('palinsesto-table-body');
+    tbody.innerHTML = '';
 
-            const filterText = document.getElementById('search-filter').value.toLowerCase();
-            const filtered = appData.palinsesto.filter(item => item.startsAt && Date.parse(item.startsAt)>Date.now()).filter(item =>
-                item.match.toLowerCase().includes(filterText) ||
-                item.tournament.toLowerCase().includes(filterText)
-            );
+    const filterText = document.getElementById('search-filter').value.toLowerCase();
+    const filtered = appData.palinsesto.filter(item => item.startsAt && Date.parse(item.startsAt) > Date.now()).filter(item =>
+        item.match.toLowerCase().includes(filterText) ||
+        item.tournament.toLowerCase().includes(filterText)
+    );
 
-            document.getElementById('match-count-badge').innerText = `${filtered.length} match`;
+    document.getElementById('match-count-badge').innerText = `${filtered.length} match`;
 
-            if(filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">Nessun match trovato. Clicca su "Aggiorna Match Reali".</td></tr>`;
-                return;
-            }
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">Nessun match trovato. Clicca su "Aggiorna Match Reali".</td></tr>`;
+        return;
+    }
+
+    const STYLE = {
+        PUNTA: { row: 'border-l-4 border-emerald-500 bg-emerald-500/5', badge: 'bg-emerald-500 text-slate-950', label: '🟢 PUNTA' },
+        BANCA: { row: 'border-l-4 border-amber-500 bg-amber-500/5', badge: 'bg-amber-500 text-slate-950', label: '🟠 BANCA' },
+        'FUORI SOGLIA': { row: 'border-l-4 border-slate-600', badge: 'bg-slate-600 text-slate-100', label: '⚪ Fuori soglia' },
+        DEFAULT: { row: 'border-l-4 border-dark-700 opacity-60', badge: 'bg-dark-700 text-slate-400', label: null }
+    };
+
+    filtered.forEach(item => {
+        const st = STYLE[item.action] || STYLE.DEFAULT;
+
+        const signalText = item.signal || 'Nessuna azione';
+        const badge = `<span class="inline-block font-semibold px-3 py-1.5 rounded-lg text-xs shadow-md bg-blue-600 text-white">${signalText}</span>`;
+
+        const stats = item.prob != null
+            ? `<div class="flex gap-1.5 mt-1 flex-wrap" title="${escapeHTML(item.market)}">
+                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-700 text-slate-300">Mod ${item.prob}%</span>
+                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-700 text-slate-400">Book ${item.bookProb}%</span>
+                 <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${item.margin >= 3 ? 'bg-emerald-500/20 text-emerald-400' : item.margin <= -3 ? 'bg-amber-500/20 text-amber-400' : 'bg-dark-700 text-slate-400'}">${item.margin >= 0 ? '+' : ''}${item.margin.toFixed(1)}pt</span>
+               </div>`
+            : `<div class="text-[11px] text-slate-500 mt-0.5">${escapeHTML(item.market)}</div>`;
+
+        const stakeCell = item.action === 'BANCA'
+            ? (item.liability != null ? `<span class="text-amber-400">Liab. €${item.liability}</span>` : '—')
+            : (item.stake != null ? `<span class="text-emerald-400">€${item.stake}</span>` : '—');
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-dark-700/40 transition-colors " + st.row;
+        tr.innerHTML = `
+            <td class="p-3">
+                <span class="text-xs text-slate-400 block">${escapeHTML(item.tournament)}</span>
+                <span class="font-medium text-white">🕒 ${item.commenceTime || 'Oggi'}</span>
+            </td>
+            <td class="p-3">
+                <span class="font-bold text-white block">${escapeHTML(item.match)}</span>
+                ${stats}
+            </td>
+            <td class="p-3 font-semibold text-slate-200">@${item.odds ? parseFloat(item.odds).toFixed(2) : "—"}</td>
+            <td class="p-3 text-cyan-400 font-semibold">@${item.fairOdds ?? "—"}</td>
+            <td class="p-3">${badge}</td>
+            <td class="p-3 font-bold">${stakeCell}</td>
+            <td class="p-3 text-right space-x-2">
+                <button ${item.prob == null ? 'disabled title="Analisi non disponibile"' : ''} onclick="betFromPalinsesto('${item.id}')" class="bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 px-2.5 py-1 rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed">Registra</button>
+                <button onclick="deletePalinsestoItem('${item.id}')" class="text-red-400 hover:underline text-xs">Elimina</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
 
             // Colore/etichetta uniche per riga, cosi si scorre la tabella a
             // colpo d'occhio senza dover leggere ogni cella.
