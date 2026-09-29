@@ -1,0 +1,5 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {parseSchedule,dayOf} from '../lib/source.js';
+const row=(score='',time='14:00')=>`<tr><td class="time">${time}</td><td><a href="/player/a/">A</a></td><td class="result">${score}</td><td class="h2h">2</td><td class="course">1.8</td><td class="course">2.1</td><td><a href="/match-detail/?id=1">info</a></td></tr><tr><td><a href="/player/b/">B</a></td><td class="result"></td></tr>`;
+test('future today, H2H does not mark started',()=>assert.equal(parseSchedule('<span class="tab">28. 09. 2026</span>'+row(),new Date('2026-09-28T11:00Z')).length,1));
+test('exclude previous day and scored matches',()=>{assert.equal(parseSchedule('<span class="tab">27. 09. 2026</span>'+row(),new Date('2026-09-28T11:00Z')).length,0);assert.equal(parseSchedule('<span class="tab">28. 09. 2026</span>'+row('1'),new Date('2026-09-28T11:00Z')).length,0)});
+test('Italian midnight',()=>assert.equal(dayOf(new Date('2026-09-28T22:30Z')),'2026-09-29'));
