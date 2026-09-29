@@ -154,6 +154,7 @@
                                 <th class="p-3">Data</th>
                                 <th class="p-3">Evento</th>
                                 <th class="p-3">Mercato</th>
+                                <th class="p-3">Lato</th>
                                 <th class="p-3">Quota</th>
                                 <th class="p-3">Importo (€)</th>
                                 <th class="p-3">Esito</th>
@@ -216,13 +217,20 @@
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Lato</label>
+                        <select id="modal-side" onchange="updateModalAmountLabel()" class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                            <option value="punta">Punta</option>
+                            <option value="banca">Banca</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Quota</label>
                         <input type="number" step="0.01" min="1.01" id="modal-odds" required class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Importo (€)</label>
-                        <input type="number" step="0.01" min="0.1" id="modal-stake" required class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
-                    </div>
+                </div>
+                <div>
+                    <label id="modal-amount-label" class="block text-xs font-medium text-slate-400 mb-1">Stake (€)</label>
+                    <input type="number" step="0.01" min="0.1" id="modal-stake" required class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Esito</label>
@@ -413,7 +421,7 @@
         function getCurrentBankroll() {
             let profitLoss = 0;
             appData.bets.forEach(b => {
-                if(b.status === 'win') profitLoss += (b.odds - 1) * b.stake;
+                if(b.status === 'win') profitLoss += b.side === 'banca' ? b.stake / (b.odds - 1) : (b.odds - 1) * b.stake;
                 if(b.status === 'loss') profitLoss -= b.stake;
             });
             const current = appData.initialBankroll + profitLoss;
@@ -462,6 +470,11 @@
             deletePalinsestoItem(id);
         }
 
+        function updateModalAmountLabel() {
+            const side = document.getElementById('modal-side').value;
+            document.getElementById('modal-amount-label').innerText = side === 'banca' ? 'Liability (€)' : 'Stake (€)';
+        }
+
         function openManualBetModal(prefill = null) {
             document.getElementById('bet-modal').classList.remove('hidden');
             document.getElementById('bet-modal').classList.add('flex');
@@ -469,15 +482,18 @@
                 document.getElementById('modal-title').innerText = `Registra Giocata (${prefill.action})`;
                 document.getElementById('modal-match').value = prefill.match || '';
                 document.getElementById('modal-market').value = prefill.market || '';
+                document.getElementById('modal-side').value = prefill.action === 'BANCA' ? 'banca' : 'punta';
                 document.getElementById('modal-odds').value = prefill.odds || '';
-                document.getElementById('modal-stake').value = prefill.stake || '';
+                document.getElementById('modal-stake').value = (prefill.action === 'BANCA' ? prefill.liability : prefill.stake) || '';
                 document.getElementById('modal-status').value = 'pending';
                 document.getElementById('modal-bet-id').value = '';
             } else {
                 document.getElementById('modal-title').innerText = "Aggiungi Scommessa Manuale";
                 document.getElementById('modal-bet-form').reset();
+                document.getElementById('modal-side').value = 'punta';
                 document.getElementById('modal-bet-id').value = '';
             }
+            updateModalAmountLabel();
         }
 
         function closeModal() {
@@ -493,6 +509,7 @@
                 date: new Date().toISOString().split('T')[0],
                 match: document.getElementById('modal-match').value,
                 market: document.getElementById('modal-market').value,
+                side: document.getElementById('modal-side').value,
                 odds: parseFloat(document.getElementById('modal-odds').value),
                 stake: parseFloat(document.getElementById('modal-stake').value),
                 status: document.getElementById('modal-status').value
@@ -524,9 +541,11 @@
             document.getElementById('modal-bet-id').value = bet.id;
             document.getElementById('modal-match').value = bet.match;
             document.getElementById('modal-market').value = bet.market;
+            document.getElementById('modal-side').value = bet.side === 'banca' ? 'banca' : 'punta';
             document.getElementById('modal-odds').value = bet.odds;
             document.getElementById('modal-stake').value = bet.stake;
             document.getElementById('modal-status').value = bet.status;
+            updateModalAmountLabel();
         }
 
         function updateInitialBankroll(e) {
@@ -675,7 +694,7 @@
             const tbody = document.getElementById('bets-table-body');
             tbody.innerHTML = '';
             if(appData.bets.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500">Nessuna scommessa registrata nello storico.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-500">Nessuna scommessa registrata nello storico.</td></tr>`;
                 return;
             }
 
@@ -685,7 +704,7 @@
                 let profitClass = 'text-slate-300';
 
                 if(bet.status === 'win') {
-                    const prof = (bet.odds - 1) * bet.stake;
+                    const prof = bet.side === 'banca' ? bet.stake / (bet.odds - 1) : (bet.odds - 1) * bet.stake;
                     statusBadge = `<span class="bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-lg text-xs font-semibold">Vinta</span>`;
                     profitText = `+€ ${prof.toFixed(2)}`;
                     profitClass = 'text-brand-500 font-bold';
@@ -707,6 +726,7 @@
                     <td class="p-3 text-xs text-slate-400">${bet.date}</td>
                     <td class="p-3 font-semibold text-white">${bet.match}</td>
                     <td class="p-3 text-cyan-400">${bet.market}</td>
+                    <td class="p-3 text-xs font-semibold ${bet.side === 'banca' ? 'text-amber-400' : 'text-emerald-400'}">${bet.side === 'banca' ? 'Banca' : 'Punta'}</td>
                     <td class="p-3 font-semibold text-slate-200">@${parseFloat(bet.odds).toFixed(2)}</td>
                     <td class="p-3 text-white">€ ${parseFloat(bet.stake).toFixed(2)}</td>
                     <td class="p-3">${statusBadge}</td>
@@ -729,7 +749,7 @@
 
             appData.bets.forEach((b, idx) => {
                 labels.push(`Gioc. ${idx + 1}`);
-                if(b.status === 'win') runningBank += (b.odds - 1) * b.stake;
+                if(b.status === 'win') runningBank += b.side === 'banca' ? b.stake / (b.odds - 1) : (b.odds - 1) * b.stake;
                 if(b.status === 'loss') runningBank -= b.stake;
                 dataPoints.push(runningBank);
             });
