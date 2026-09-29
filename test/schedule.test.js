@@ -3,6 +3,11 @@ const row=(score='',time='14:00')=>`<tr><td class="time">${time}</td><td><a href
 test('future today, H2H does not mark started',()=>assert.equal(parseSchedule('<span class="tab">28. 09. 2026</span>'+row(),new Date('2026-09-28T11:00Z')).length,1));
 test('exclude previous day and scored matches',()=>{assert.equal(parseSchedule('<span class="tab">27. 09. 2026</span>'+row(),new Date('2026-09-28T11:00Z')).length,0);assert.equal(parseSchedule('<span class="tab">28. 09. 2026</span>'+row('1'),new Date('2026-09-28T11:00Z')).length,0)});
 test('Italian midnight',()=>assert.equal(dayOf(new Date('2026-09-28T22:30Z')),'2026-09-29'));
+test('tournament name comes from its own link, even if the header cell also has extra "live streams" text', () => {
+ const html = '<span class="tab">28. 09. 2026</span><tr class="head flags"><td class="t-name" colspan="2"><a href="/chengdu/2026/atp-men/">Chengdu</a> Live streams<a href="http://aff.example/">bet365</a></td></tr>' + row();
+ const r = parseSchedule(html, new Date('2026-09-28T11:00Z'));
+ assert.equal(r[0].tournament, 'Chengdu');
+});
 test('a normal tournament header is kept as the tournament name',()=>{
  const html='<span class="tab">28. 09. 2026</span><tr class="head"><td>Rotterdam</td></tr>'+row();
  assert.equal(parseSchedule(html,new Date('2026-09-28T11:00Z'))[0].tournament,'Rotterdam');
