@@ -7,7 +7,17 @@ test('a normal tournament header is kept as the tournament name',()=>{
  const html='<span class="tab">28. 09. 2026</span><tr class="head"><td>Rotterdam</td></tr>'+row();
  assert.equal(parseSchedule(html,new Date('2026-09-28T11:00Z'))[0].tournament,'Rotterdam');
 });
-test('a "live streams" ticker header is not mistaken for the tournament name',()=>{
+test('a "live streams" ticker header is treated as unidentified, and unidentified matches are filtered out',()=>{
  const html='<span class="tab">28. 09. 2026</span><tr class="head"><td>13:30 Live streams bet365 Unibet</td></tr>'+row();
- assert.equal(parseSchedule(html,new Date('2026-09-28T11:00Z'))[0].tournament,'Torneo non identificato');
+ assert.equal(parseSchedule(html,new Date('2026-09-28T11:00Z')).length,0);
+});
+test('minor tournaments (and unidentified ones) are filtered out entirely',()=>{
+ const now=new Date('2026-09-28T11:00Z');
+ const minorNames=['Futures 2026','UTR Pro Tennis Series 3','Antalya 6 ITF','Roma M15'];
+ for(const name of minorNames){
+  const html=`<span class="tab">28. 09. 2026</span><tr class="head"><td>${name}</td></tr>`+row();
+  assert.equal(parseSchedule(html,now).length,0,name+' should have been filtered out');
+ }
+ const html='<span class="tab">28. 09. 2026</span><tr class="head"><td>Rotterdam</td></tr>'+row();
+ assert.equal(parseSchedule(html,now).length,1);
 });

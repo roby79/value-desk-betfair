@@ -124,11 +124,10 @@
                             <tr class="bg-dark-900/50 text-slate-400 text-xs uppercase border-b border-dark-700">
                                 <th class="p-3">Torneo / Orario</th>
                                 <th class="p-3">Giocatore / Selezione</th>
-                                <th class="p-3">Quota Mercato</th>
-                                <th class="p-3">Quota Equa (Modello)</th>
-                                <th class="p-3">Probabilità Modello</th>
-                                <th class="p-3">Indicazione Visiva</th>
-                                <th class="p-3">Stake Consigliato</th>
+                                <th class="p-3">Quota</th>
+                                <th class="p-3">Quota Equa</th>
+                                <th class="p-3">Segnale</th>
+                                <th class="p-3">Stake / Liability</th>
                                 <th class="p-3 text-right">Azioni</th>
                             </tr>
                         </thead>
@@ -352,7 +351,12 @@
                                 item.odds = favOdds;
                                 item.action = edge >= 3 ? 'PUNTA' : (-edge) >= 3 ? 'BANCA' : 'FUORI SOGLIA';
                                 item.puntaName = favName;
-                                item.stake = item.action === 'PUNTA' ? calculateKellyStake(favOdds, probPct) : null;
+                                item.margin = edge;
+                                item.bookProb = +implied.toFixed(1);
+                                item.componentsUsed = est.componentsUsed;
+                                const plan = item.action !== 'FUORI SOGLIA' ? calculateStakePlan(favOdds, probPct, item.action === 'BANCA' ? 'banca' : 'punta') : null;
+                                item.stake = plan ? plan.stake : null;
+                                item.liability = plan ? plan.liability : null;
                                 item.market = favName + ' · modello ' + probPct + '% vs book ' + implied.toFixed(1) + '% · margine ' + (edge>=0?'+':'') + edge.toFixed(1) + ' punti · ' + est.reason;
                             }
                         } else {
@@ -369,23 +373,40 @@
             } finally {loadingMatches=false;btn.disabled=false;btn.innerText='🔄 Aggiorna Match Reali';}
         }
 
-        function calculateKellyStake(odds, prob) {
-            const currentBank = getCurrentBankroll();
-            const b = odds - 1;
-            const p = prob / 100;
-            const q = 1 - p;
-            let kellyFull = (p * b - q) / b;
-            if (kellyFull < 0) kellyFull = 0;
-            return (currentBank * kellyFull * 0.5).toFixed(2);
-        }
-
         function getCurrentBankroll() {
             let profitLoss = 0;
             appData.bets.forEach(b => {
                 if(b.status === 'win') profitLoss += (b.odds - 1) * b.stake;
                 if(b.status === 'loss') profitLoss -= b.stake;
             });
-            return appData.initialBankroll + profitLoss;
+            const current = appData.initialBankroll + profitLoss;
+            if (!appData.peakBankroll || current > appData.peakBankroll) appData.peakBankroll = current;
+            return current;
+        }
+
+        // Piano di crescita: Kelly frazionato al 50% come prima, ma con un tetto
+        // per giocata (5% della cassa attuale) e un de-risking automatico se si
+        // scende sotto l'80% del picco storico di cassa - si rischia meno quando
+        // le cose vanno peggio, mai di più (nessun recupero delle perdite).
+        // side='punta': prob/odds della selezione che si punta (rischio = stake).
+        // side='banca': prob/odds della selezione che si banca (rischio = liability).
+        function calculateStakePlan(odds, prob, side) {
+            const current = getCurrentBankroll();
+            const peak = appData.peakBankroll || current;
+            const riskFactor = (peak > 0 && current / peak < 0.8) ? 0.5 : 1;
+            const cap = current * 0.05 * riskFactor;
+            const b = odds - 1, p = prob / 100, q = 1 - p;
+            let kellyFull, risk;
+            if (side === 'banca') {
+                kellyFull = q - p * b;
+                risk = current * Math.max(0, kellyFull) * 0.5;
+                risk = Math.min(risk, cap);
+                return { stake: +(risk / b).toFixed(2), liability: +risk.toFixed(2) };
+            }
+            kellyFull = (p * b - q) / b;
+            risk = current * Math.max(0, kellyFull) * 0.5;
+            risk = Math.min(risk, cap);
+            return { stake: +risk.toFixed(2), liability: null };
         }
 
         function filterPalinsesto() {
@@ -546,31 +567,51 @@
         function renderPalinsesto() {
             const tbody = document.getElementById('palinsesto-table-body');
             tbody.innerHTML = '';
-            
+
             const filterText = document.getElementById('search-filter').value.toLowerCase();
-            const filtered = appData.palinsesto.filter(item => item.startsAt && Date.parse(item.startsAt)>Date.now()).filter(item => 
-                item.match.toLowerCase().includes(filterText) || 
+            const filtered = appData.palinsesto.filter(item => item.startsAt && Date.parse(item.startsAt)>Date.now()).filter(item =>
+                item.match.toLowerCase().includes(filterText) ||
                 item.tournament.toLowerCase().includes(filterText)
             );
 
             document.getElementById('match-count-badge').innerText = `${filtered.length} match`;
 
             if(filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500">Nessun match trovato. Clicca su "Aggiorna Match Reali".</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">Nessun match trovato. Clicca su "Aggiorna Match Reali".</td></tr>`;
                 return;
             }
 
+            // Colore/etichetta uniche per riga, cosi si scorre la tabella a
+            // colpo d'occhio senza dover leggere ogni cella.
+            const STYLE = {
+                PUNTA:   { row:'border-l-4 border-emerald-500 bg-emerald-500/5', badge:'bg-emerald-500 text-slate-950', label:'🟢 PUNTA' },
+                BANCA:   { row:'border-l-4 border-amber-500 bg-amber-500/5',     badge:'bg-amber-500 text-slate-950',  label:'🟠 BANCA' },
+                'FUORI SOGLIA': { row:'border-l-4 border-slate-600', badge:'bg-slate-600 text-slate-100', label:'⚪ Fuori soglia' },
+                DEFAULT: { row:'border-l-4 border-dark-700 opacity-60', badge:'bg-dark-700 text-slate-400', label:null }
+            };
+
             filtered.forEach(item => {
-                const actionBadge = item.prob == null
-                    ? '<span class="text-slate-400">' + (item.action === 'FUORI RANGE' ? 'Fuori range quota' : 'Analisi non disponibile') + '</span>'
-                    : item.action === 'PUNTA'
-                    ? `<span class="bg-emerald-500 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs shadow-md inline-flex items-center gap-1">🟢 PUNTA</span>`
-                    : item.action === 'BANCA'
-                    ? `<span class="bg-amber-500 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs shadow-md inline-flex items-center gap-1">🟠 BANCA</span>`
-                    : `<span class="bg-slate-600 text-slate-100 font-semibold px-3 py-1.5 rounded-lg text-xs inline-flex items-center gap-1">⚪ Fuori soglia</span>`;
+                const st = STYLE[item.action] || STYLE.DEFAULT;
+                const badge = st.label
+                    ? `<span class="${st.badge} font-extrabold px-3 py-1.5 rounded-lg text-xs shadow-md inline-flex items-center gap-1">${st.label}</span>`
+                    : `<span class="text-slate-500 text-xs">${item.action === 'FUORI RANGE' ? 'Fuori range' : 'N/D'}</span>`;
+
+                // Chip compatti modello/book/margine al posto della frase lunga;
+                // il dettaglio completo resta nel title (tooltip al passaggio).
+                const stats = item.prob != null
+                    ? `<div class="flex gap-1.5 mt-1 flex-wrap" title="${escapeHTML(item.market)}">
+                         <span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-700 text-slate-300">Mod ${item.prob}%</span>
+                         <span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-700 text-slate-400">Book ${item.bookProb}%</span>
+                         <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${item.margin>=3?'bg-emerald-500/20 text-emerald-400':item.margin<=-3?'bg-amber-500/20 text-amber-400':'bg-dark-700 text-slate-400'}">${item.margin>=0?'+':''}${item.margin.toFixed(1)}pt</span>
+                       </div>`
+                    : `<div class="text-[11px] text-slate-500 mt-0.5">${escapeHTML(item.market)}</div>`;
+
+                const stakeCell = item.action === 'BANCA'
+                    ? (item.liability != null ? `<span class="text-amber-400">Liab. €${item.liability}</span>` : '—')
+                    : (item.stake != null ? `<span class="text-emerald-400">€${item.stake}</span>` : '—');
 
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-dark-700/40 transition-colors";
+                tr.className = "hover:bg-dark-700/40 transition-colors " + st.row;
                 tr.innerHTML = `
                     <td class="p-3">
                         <span class="text-xs text-slate-400 block">${escapeHTML(item.tournament)}</span>
@@ -578,13 +619,12 @@
                     </td>
                     <td class="p-3">
                         <span class="font-bold text-white block">${escapeHTML(item.match)}</span>
-                        <span class="text-xs text-cyan-400">${escapeHTML(item.market)}</span>
+                        ${stats}
                     </td>
                     <td class="p-3 font-semibold text-slate-200">@${item.odds ? parseFloat(item.odds).toFixed(2) : "—"}</td>
                     <td class="p-3 text-cyan-400 font-semibold">@${item.fairOdds ?? "—"}</td>
-                    <td class="p-3 text-slate-300">${item.prob == null ? "—" : item.prob+"%"}</td>
-                    <td class="p-3">${actionBadge}</td>
-                    <td class="p-3 font-bold text-white">${item.stake == null ? "—" : "€ "+item.stake}</td>
+                    <td class="p-3">${badge}</td>
+                    <td class="p-3 font-bold">${stakeCell}</td>
                     <td class="p-3 text-right space-x-2">
                         <button ${item.prob == null ? 'disabled title="Analisi non disponibile"' : ''} onclick="betFromPalinsesto('${item.id}')" class="bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 px-2.5 py-1 rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed">Registra</button>
                         <button onclick="deletePalinsestoItem('${item.id}')" class="text-red-400 hover:underline text-xs">Elimina</button>
