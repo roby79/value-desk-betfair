@@ -285,6 +285,26 @@
         }
 
         let loadingMatches = false;
+        // Stessa logica di lib/source.js:estimateProbability, duplicata qui perché
+        // questa pagina è uno script inline (non un modulo) e non importa dal
+        // server - va tenuta allineata se la formula cambia lato server.
+        function estimateProbabilityClient(a, b) {
+            const pair = s => { const m = s && String(s).match(/^(\d+)\/(\d+)$/); return m ? {w:+m[1], l:+m[2]} : null; };
+            const rankShare = (a.rank && b.rank) ? (1/a.rank)/(1/a.rank+1/b.rank) : null;
+            const sA = a.seasonColumns && pair(a.seasonColumns[1]), sB = b.seasonColumns && pair(b.seasonColumns[1]);
+            const rate = p => p ? (p.w+1)/(p.w+p.l+2) : null;
+            const rA = rate(sA), rB = rate(sB);
+            const seasonShare = (rA != null && rB != null) ? rA/(rA+rB) : null;
+            const recentRate = m => (!m || !m.length) ? null : (m.filter(x=>x.won).length+1)/(m.length+2);
+            const reA = recentRate(a.recent), reB = recentRate(b.recent);
+            const recentShare = (reA != null && reB != null) ? reA/(reA+reB) : null;
+            const parts = [[0.55,seasonShare],[0.25,rankShare],[0.20,recentShare]].filter(([,v])=>v!=null);
+            if (!parts.length) return { prob:null, reason:'Dati insufficienti (ranking, bilancio stagionale o recente mancanti).' };
+            const totalW = parts.reduce((s,[w])=>s+w,0);
+            const prob = parts.reduce((s,[w,v])=>s+w*v,0)/totalW;
+            return { prob, componentsUsed:parts.length, reason: parts.length<3 ? 'Stima parziale: manca '+(3-parts.length)+' componente su 3 (superficie usata come bilancio aggregato annuale, non ancora specifica per torneo).' : 'Stima completa su tutte e tre le componenti (superficie come bilancio aggregato annuale).' };
+        }
+
         async function fetchLiveMatches() {
             if(loadingMatches) return;
             loadingMatches = true;
@@ -298,19 +318,46 @@
                 appData.palinsesto = data.matches.map(m => ({
                     id: String(m.id), tournament:m.tournament,
                     commenceTime:new Date(m.startsAt).toLocaleTimeString('it-IT',{timeZone:'Europe/Rome',hour:'2-digit',minute:'2-digit'}),
-                    startsAt:m.startsAt, match:m.p1+' vs '+m.p2, market:'Statistiche in caricamento',
-                    odds:m.odds[0], fairOdds:null, prob:null, action:'DATI INSUFFICIENTI',stake:null, profiles:m.profiles
+                    startsAt:m.startsAt, p1:m.p1, p2:m.p2, match:m.p1+' vs '+m.p2, market:'Statistiche in caricamento',
+                    oddsPair:m.odds, odds:m.odds[0], fairOdds:null, prob:null, action:'DATI INSUFFICIENTI',stake:null, profiles:m.profiles
                 }));
                 document.getElementById('data-status').textContent = 'Fonte: TennisExplorer · Recuperato '+new Date(data.updated).toLocaleString('it-IT')+' · Quote indicative, non quote BANCA Betfair.';
                 saveData();
                 const queue=[...appData.palinsesto];
                 await Promise.all(Array.from({length:2},async()=>{
                     while(queue.length){const item=queue.shift();
-                        const stats=await Promise.all(item.profiles.map(async path=>{
-                            try{const r=await fetch('/api/profile?path='+encodeURIComponent(path));if(!r.ok)return null;return await r.json();}catch{return null;}
+                        const labels=[item.p1,item.p2];
+                        const stats=await Promise.all(item.profiles.map(async(path,i)=>{
+                            try{const r=await fetch('/api/profile?path='+encodeURIComponent(path)+'&label='+encodeURIComponent(labels[i]));if(!r.ok)return null;return await r.json();}catch{return null;}
                         }));
                         item.stats=stats;
-                        item.market=stats.every(Boolean)?'Ranking: '+stats.map(p=>p.rank ?? 'n.d.').join(' / ')+' · Elo non disponibile':'Fonte statistica non disponibile';
+                        if(stats.every(Boolean) && item.oddsPair && item.oddsPair.length===2 && item.oddsPair.every(o=>o>0)){
+                            const fav1 = item.oddsPair[0] <= item.oddsPair[1];
+                            const favOdds = fav1 ? item.oddsPair[0] : item.oddsPair[1];
+                            const favStats = fav1 ? stats[0] : stats[1], dogStats = fav1 ? stats[1] : stats[0];
+                            const favName = fav1 ? item.p1 : item.p2;
+                            const est = estimateProbabilityClient(favStats, dogStats);
+                            if (est.prob == null) {
+                                item.market = 'Analisi non disponibile: ' + est.reason;
+                                item.prob = null; item.action = 'DATI INSUFFICIENTI';
+                            } else if (favOdds < 1.50 || favOdds > 2.80) {
+                                item.market = 'Fuori range quota (1,50–2,80): quota favorita ' + favOdds.toFixed(2);
+                                item.prob = null; item.action = 'FUORI RANGE';
+                            } else {
+                                const probPct = +(est.prob*100).toFixed(1);
+                                const implied = 100/favOdds;
+                                const edge = probPct - implied;
+                                item.prob = probPct;
+                                item.fairOdds = +(100/probPct).toFixed(2);
+                                item.odds = favOdds;
+                                item.action = edge >= 3 ? 'PUNTA' : (-edge) >= 3 ? 'BANCA' : 'FUORI SOGLIA';
+                                item.puntaName = favName;
+                                item.stake = item.action === 'PUNTA' ? calculateKellyStake(favOdds, probPct) : null;
+                                item.market = favName + ' · modello ' + probPct + '% vs book ' + implied.toFixed(1) + '% · margine ' + (edge>=0?'+':'') + edge.toFixed(1) + ' punti · ' + est.reason;
+                            }
+                        } else {
+                            item.market = stats.every(Boolean) ? 'Quote non disponibili per questo match' : 'Fonte statistica non disponibile';
+                        }
                         renderPalinsesto();
                     }
                 }));
@@ -514,10 +561,13 @@
             }
 
             filtered.forEach(item => {
-                const isPunta = item.action === 'PUNTA';
-                const actionBadge = item.prob == null ? '<span class="text-slate-400">Analisi non disponibile</span>' : isPunta 
+                const actionBadge = item.prob == null
+                    ? '<span class="text-slate-400">' + (item.action === 'FUORI RANGE' ? 'Fuori range quota' : 'Analisi non disponibile') + '</span>'
+                    : item.action === 'PUNTA'
                     ? `<span class="bg-emerald-500 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs shadow-md inline-flex items-center gap-1">🟢 PUNTA</span>`
-                    : `<span class="bg-amber-500 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs shadow-md inline-flex items-center gap-1">🟠 BANCA</span>`;
+                    : item.action === 'BANCA'
+                    ? `<span class="bg-amber-500 text-slate-950 font-extrabold px-3 py-1.5 rounded-lg text-xs shadow-md inline-flex items-center gap-1">🟠 BANCA</span>`
+                    : `<span class="bg-slate-600 text-slate-100 font-semibold px-3 py-1.5 rounded-lg text-xs inline-flex items-center gap-1">⚪ Fuori soglia</span>`;
 
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-dark-700/40 transition-colors";
@@ -536,7 +586,7 @@
                     <td class="p-3">${actionBadge}</td>
                     <td class="p-3 font-bold text-white">${item.stake == null ? "—" : "€ "+item.stake}</td>
                     <td class="p-3 text-right space-x-2">
-                        <button disabled title="Analisi Elo non disponibile" onclick="betFromPalinsesto('${item.id}')" class="bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 px-2.5 py-1 rounded-lg text-xs font-semibold">Registra</button>
+                        <button ${item.prob == null ? 'disabled title="Analisi non disponibile"' : ''} onclick="betFromPalinsesto('${item.id}')" class="bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 px-2.5 py-1 rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed">Registra</button>
                         <button onclick="deletePalinsestoItem('${item.id}')" class="text-red-400 hover:underline text-xs">Elimina</button>
                     </td>
                 `;
