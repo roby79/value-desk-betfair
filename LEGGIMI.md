@@ -1,46 +1,81 @@
-# Value Desk — Elo + book, allerta su entrambi i lati
+# Value Desk — Elo v2: quote storiche, superficie, Glicko, log-odds, quote multi-bookmaker
 
 Palinsesto e profili reali da TennisExplorer via Pages Functions. Il
 palinsesto legge circa 250 intestazioni torneo al giorno e filtra tornei
-minori e partite senza quota reale; il bug che azzerava quasi tutti i
-risultati (un popup "Live streams" annidato nelle righe partita veniva
-scambiato per un'intestazione torneo) è risolto — l'intestazione si
-riconosce ora solo dal tag `<tr>` di apertura, e il nome torneo si legge dal
-suo link (`/nome-torneo/2026/atp-men/`), non dal testo intero della cella.
+minori e partite senza quota reale.
 
-## Come funziona la stima
+## Come funziona la stima (v2)
 
-Tre componenti pesate: **45% bilancio stagionale**, **25% ranking**, **30%
-Elo ricostruito dalle ultime partite** (fino a 10, dati reali dal profilo),
-più un **correttivo sui precedenti diretti** (±5 punti percentuali massimo)
-quando lo storico recente di un giocatore include scontri con l'avversario
-di oggi. L'Elo riparte sempre da 1500 e rigioca solo le partite recenti
-disponibili, assumendo un avversario storico medio (1500): non è un Elo
-reale su tutta la carriera, ma non inventa risultati — usa solo vinto/perso
-verificato dal profilo. Il modulo condiviso è `lib/elo.js` (testato), la
-stessa logica è duplicata in `index.html` perché la pagina non è un modulo
-ES e non può importare dal server.
+Tre componenti combinate **in log-odds** (non media lineare — è il modo
+statisticamente corretto di sommare fonti indipendenti, lo stesso principio
+dell'aggiornamento bayesiano): **45% bilancio stagionale**, **25% ranking**,
+**30% Elo ricostruito dalle ultime partite**.
 
-**L'allerta scatta su entrambi i lati**, come richiesto: se il modello
-preferisce la favorita più del book, segnala PUNTA; se invece preferisce la
-sfavorita (margine negativo abbastanza ampio), segnala BANCA — cioè lo
-stesso vantaggio letto dal lato opposto. Soglia minima: 3 punti percentuali
-di margine, quota favorita tra 1,50 e 2,80. Sotto soglia: "Fuori soglia",
-visibile ma non segnalata come occasione.
+Novità rispetto alla versione precedente:
 
-Nessuna componente mancante viene inventata: se manca ranking, bilancio o
-storico di un giocatore, quella componente è semplicemente esclusa dalla
-media pesata (rinormalizzata sulle componenti disponibili), o l'intera stima
-resta "non disponibile" se non ne resta nessuna.
+- **Elo da quote storiche, non più avversario fisso a 1500**: per ogni
+  partita recente, se conosciamo la quota che aveva allora il nostro
+  giocatore (letta dallo storico del profilo), usiamo la probabilità
+  implicita di quella quota come aspettativa dell'aggiornamento Elo — il
+  mercato di allora sapeva già quanto fosse forte l'avversario. Quando la
+  quota storica non è nota, si torna al fallback avversario-medio.
+- **Superficie (sperimentale)**: se `/api/surface` riesce a leggere la
+  superficie del torneo di oggi, il bilancio-stagione si calcola al 50%
+  sull'aggregato e al 50% sulla colonna di superficie del profilo
+  (Clay/Hard/Indoors/Grass) — proporzione empiricamente testata da terzi
+  (Jeff Sackmann/tennisabstract.com), non scelta a caso.
+- **Incertezza in stile Glicko (semplificata)**: quante meno partite recenti
+  abbiamo usato per l'Elo, tanto più la stima finale viene tirata verso il
+  50% prima del confronto con il book. Non è il vero algoritmo Glicko
+  (iterativo, aggiorna l'incertezza di entrambi i giocatori insieme): è una
+  versione semplificata che cattura la stessa idea con una formula fissa.
+  Verificato con simulazione: con 1 partita a testa la confidenza scende
+  intorno al 25%, con 10 partite sale intorno al 75%.
+- **Quote multi-bookmaker (sperimentale)**: `/api/match-odds` legge la pagina
+  di dettaglio della partita e, se trova più righe di quote, ne fa la media
+  invece di affidarsi alla singola quota (di un bookmaker scelto a caso)
+  presa dal palinsesto. Se la pagina segnala anche una quota di apertura, la
+  teniamo separata (mostrata ma non ancora usata nel calcolo del margine).
 
-La correzione sulla percentuale di game vinti (dal punteggio dei set) NON è
-stata implementata: il formato del punteggio estratto in solo testo
-("62-7, 7-61, 7-5") è ambiguo — non si riesce a distinguere con certezza le
-cifre del tie-break da quelle del set senza vedere l'HTML grezzo della
-sezione. Implementarla alla cieca rischierebbe di produrre un numero sbagliato
-spacciato per dato reale, il che va contro il principio di questo progetto.
+Più un correttivo sui precedenti diretti (±5 punti percentuali massimo),
+come prima.
 
-La grafica dello ZIP originale, cassa e storico sono invariati.
+**L'allerta scatta su entrambi i lati**: PUNTA se il modello preferisce la
+favorita di almeno 3 punti sul book; BANCA se preferisce la sfavorita di
+almeno 3 punti (stesso vantaggio letto dal lato opposto, nel tennis non c'è
+pareggio). Sotto soglia: "Fuori soglia", visibile ma non segnalata.
+
+Il modulo condiviso è `lib/elo.js` (testato, 12 test). La stessa logica di
+combinazione è duplicata in `index.html` perché la pagina non è un modulo ES
+e non può importare dal server — se cambi la formula, aggiornala in
+entrambi i punti.
+
+## Cosa NON abbiamo copiato, e perché
+
+Abbiamo verificato l'idea di usare le quote di un bookmaker "sharp" (es.
+Pinnacle) come riferimento più affidabile del book. Scartata: tecnicamente
+irraggiungibile da qui (protezione anti-bot, redirect loop), e soprattutto
+Pinnacle dichiara esplicitamente nei suoi termini che le quote sono
+proprietarie e non copiabili — non è terreno su cui costruire uno scraper.
+La media multi-bookmaker da TennisExplorer (sopra) è il compromesso onesto
+che resta dentro le regole che già rispettiamo.
+
+La correzione sulla percentuale di game vinti (dal punteggio dei set) resta
+NON implementata per lo stesso motivo di sempre: il formato del punteggio
+estratto in solo testo è ambiguo (non si distinguono le cifre del tie-break)
+senza vedere l'HTML grezzo della sezione.
+
+## Sperimentale: cosa aspettarsi al primo giro
+
+`/api/surface` e `/api/match-odds` leggono due pagine che non abbiamo mai
+potuto verificare con un HTML reale (a differenza del palinsesto e del
+profilo, verificati più volte con schermate vere). I parser sono scritti
+con la struttura più plausibile, con test che usano un HTML finto
+verosimile — ma è probabile che al primo utilizzo reale servano correzioni,
+come è già successo con il palinsesto. Se il campo `surface` o `avgOdds`
+tornano sempre `null`, non è necessariamente un problema del resto del
+sistema: mandami il JSON di uno di questi due endpoint per un match reale e
+sistemiamo il parser con gli stessi passi già usati per il palinsesto.
 
 ## Installazione
 Copiare index.html, package.json, _routes.json e le cartelle functions, lib, test
@@ -49,20 +84,22 @@ nella cartella del progetto, senza sostituire la cartella .git.
 ```bash
 npm test
 git add index.html package.json _routes.json functions lib test LEGGIMI.md
-git commit -m "Elo da statistiche reali con H2H, allerta su favorita e sfavorita"
+git commit -m "Elo v2: quote storiche, superficie, Glicko, log-odds, quote multi-bookmaker"
 git push
 ```
 
-Dopo il deploy: /api/schedule risponde con day/source/updated/matches;
-/api/profile?path=/player/hurkacz/&label=Hurkacz%20H. restituisce rank,
-seasonColumns e recent. Nel Palinsesto, premi "Aggiorna Match Reali" e
-controlla la colonna centrale di ogni riga: modello%, book%, margine e quali
-componenti sono state usate.
+Dopo il deploy: /api/schedule risponde con day/source/updated/matches (ora
+con anche tournamentUrl per match); /api/surface?path=/torneo/2026/atp-men/
+e /api/match-odds?id=XXXX sono i due nuovi endpoint sperimentali - provali
+direttamente nel browser su un match reale per vedere cosa restituiscono.
 
 ## Verifiche e limiti
-Test locali: 18 superati (13 palinsesto/profilo/stima + 5 sul nuovo modulo
-Elo), nessuna dipendenza npm, tutto eseguibile offline. Sintassi JS
-verificata su entrambi gli script della pagina.
+Test locali: 30 superati (schedule, profilo, elo, match-detail), nessuna
+dipendenza npm, tutto eseguibile offline (i test di superficie/quote
+multi-bookmaker usano un fetch finto, non la rete reale). Sintassi JS
+verificata su entrambi gli script della pagina. Simulazione end-to-end del
+restringimento Glicko verificata a mano (confidenza 26% con 1 partita a
+testa, 75% con 10).
 Deploy Cloudflare NON effettuato da questo ambiente; verificare su Cloudflare.
 Il fuso fonte rilevato è GMT+1 fisso; visualizzazione Europe/Rome.
 Le quote sono indicative della fonte, NON quote eseguibili Betfair né quote BANCA.
@@ -70,14 +107,15 @@ retrievedAt è il momento del recupero, non certificazione dell'aggiornamento
 della fonte.
 
 ## Lavoro ancora necessario
-1. Superficie specifica del torneo (serve leggere la pagina torneo e
-   collegarla al match, poi usare la colonna Clay/Hard/Indoors/Grass giusta
-   invece del bilancio aggregato).
-2. Correzione percentuale game vinti (serve vedere l'HTML grezzo della
-   sezione storico partite per interpretare correttamente la notazione dei
-   punteggi con tie-break).
-3. Validazione dei pesi 45/25/30 sui risultati futuri — non ancora fatta.
+1. Verificare `/api/surface` e `/api/match-odds` su casi reali e correggere
+   il parser se necessario (vedi sopra).
+2. Correzione percentuale game vinti — ancora bloccata dall'ambiguità della
+   notazione punteggio in solo testo.
+3. Validazione dei pesi (45/25/30, blend superficie 50/50, soglia 3 punti,
+   formula Glicko) sui risultati futuri — non ancora fatta su dati nostri.
 4. Elo persistente tra le richieste (oggi si ricostruisce da zero a ogni
    caricamento, dalle sole ultime 10 partite) — servirebbe uno storage
-   (es. KV di Cloudflare) per accumulare un Elo vero nel tempo.
+   (es. KV di Cloudflare) per accumulare un Elo vero nel tempo, e per
+   tracciare davvero il movimento delle quote apertura→attuale nel tempo
+   invece di leggerlo (se disponibile) dalla sola pagina di dettaglio.
 5. Commissioni e responsabilità BANCA nel calcolo dello stake.

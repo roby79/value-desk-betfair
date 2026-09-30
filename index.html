@@ -300,33 +300,68 @@
         // dal server - va tenuta allineata se la formula cambia lato server.
         // Combina tre componenti (bilancio stagionale, ranking, Elo dalle
         // ultime partite) più un correttivo sui precedenti diretti.
-        function estimateProbabilityClient(a, b, aName, bName) {
+        // Stessa logica del modulo condiviso lib/elo.js, duplicata qui perché
+        // questa pagina è uno script inline (non un modulo ES) e non importa
+        // dal server - va tenuta allineata se la formula cambia lato server.
+        // Combina quattro componenti: bilancio stagionale (con blend di
+        // superficie quando nota), ranking, Elo dalle ultime partite (con le
+        // quote storiche come aspettativa quando disponibili invece di un
+        // avversario fisso a 1500), più un correttivo H2H e un restringimento
+        // in stile Glicko quando i dati recenti sono pochi.
+        function estimateProbabilityClient(a, b, aName, bName, surface) {
             const pair = s => { const m = s && String(s).match(/^(\d+)\/(\d+)$/); return m ? {w:+m[1], l:+m[2]} : null; };
-            const rankShare = (a.rank && b.rank) ? (1/a.rank)/(1/a.rank+1/b.rank) : null;
-            const sA = a.seasonColumns && pair(a.seasonColumns[1]), sB = b.seasonColumns && pair(b.seasonColumns[1]);
             const rate = p => p ? (p.w+1)/(p.w+p.l+2) : null;
-            const rA = rate(sA), rB = rate(sB);
-            const seasonShare = (rA != null && rB != null) ? rA/(rA+rB) : null;
 
-            // Elo ricostruito rigiocando le ultime partite (dalla più vecchia),
-            // assumendo 1500 per ogni avversario storico - non conosciamo il
-            // loro Elo reale, quindi li trattiamo come nella media.
+            const rankShare = (a.rank && b.rank) ? (1/a.rank)/(1/a.rank+1/b.rank) : null;
+
+            const sA = a.seasonColumns && pair(a.seasonColumns[1]), sB = b.seasonColumns && pair(b.seasonColumns[1]);
+            const rA = rate(sA), rB = rate(sB);
+            const seasonAggShare = (rA != null && rB != null) ? rA/(rA+rB) : null;
+
+            // Superficie (sperimentale): blend 50/50 con l'aggregato quando
+            // conosciamo la superficie di oggi, usando le colonne già
+            // presenti nel profilo (Year|Summary|Clay|Hard|Indoors|Grass|Not set).
+            const SURFACE_COL = { clay:2, hard:3, 'indoor hard':4, grass:5 };
+            let seasonShare = seasonAggShare;
+            if (surface && SURFACE_COL[surface] != null) {
+                const col = SURFACE_COL[surface];
+                const sfA = a.seasonColumns && pair(a.seasonColumns[col]), sfB = b.seasonColumns && pair(b.seasonColumns[col]);
+                const rfA = rate(sfA), rfB = rate(sfB);
+                const surfaceShare = (rfA != null && rfB != null) ? rfA/(rfA+rfB) : null;
+                if (surfaceShare != null) seasonShare = (seasonAggShare != null) ? 0.5*seasonAggShare + 0.5*surfaceShare : surfaceShare;
+            }
+
+            // Elo ricostruito rigiocando le ultime partite (dalla più vecchia).
+            // Quando conosciamo la quota storica del nostro giocatore in quella
+            // partita, usiamo la probabilità implicita di quella quota come
+            // aspettativa (il mercato di allora sapeva già quanto fosse forte
+            // l'avversario); altrimenti si torna al fallback avversario-medio.
             const eloFromRecent = recent => {
-                if (!recent || !recent.length) return null;
+                if (!recent || !recent.length) return { elo:null, n:0 };
                 let elo = 1500;
                 [...recent].reverse().forEach(m => {
-                    const expected = 1 / (1 + Math.pow(10, (1500 - elo) / 400));
-                    elo += 20 * ((m.won ? 1 : 0) - expected);
+                    const expected = (m.ownOdds && m.ownOdds > 1.01) ? 1/m.ownOdds : 1/(1+Math.pow(10,(1500-elo)/400));
+                    elo += 20 * ((m.won?1:0) - expected);
                 });
-                return elo;
+                return { elo, n: recent.length };
             };
-            const eloA = eloFromRecent(a.recent), eloB = eloFromRecent(b.recent);
-            const eloShare = (eloA != null && eloB != null) ? 1/(1+Math.pow(10,(eloB-eloA)/400)) : null;
+            const eA = eloFromRecent(a.recent), eB = eloFromRecent(b.recent);
+            const eloShare = (eA.elo != null && eB.elo != null) ? 1/(1+Math.pow(10,(eB.elo-eA.elo)/400)) : null;
+            const nMatchesMin = Math.min(eA.n, eB.n);
 
+            // Combinazione in log-odds: il modo statisticamente corretto di
+            // sommare fonti indipendenti (come nell'aggiornamento bayesiano).
+            // Non è "più prudente" di una media lineare - anzi può essere più
+            // decisa se le componenti concordano; la prudenza sui dati scarsi
+            // arriva dopo, con il restringimento in stile Glicko più sotto.
+            const clamp = p => Math.max(0.02, Math.min(0.98, p));
+            const logit = p => Math.log(p/(1-p));
+            const sigmoid = x => 1/(1+Math.exp(-x));
             const parts = [[0.45,seasonShare],[0.25,rankShare],[0.30,eloShare]].filter(([,v])=>v!=null);
             if (!parts.length) return { prob:null, reason:'Dati insufficienti (ranking, bilancio stagionale o storico recente mancanti).' };
             const totalW = parts.reduce((s,[w])=>s+w,0);
-            let prob = parts.reduce((s,[w,v])=>s+w*v,0)/totalW;
+            const avgLogit = parts.reduce((s,[w,v])=>s+w*logit(clamp(v)),0)/totalW;
+            let prob = sigmoid(avgLogit);
 
             // Correttivo sui precedenti diretti, se lo storico recente di A
             // include scontri con B (max ±5 punti percentuali).
@@ -340,12 +375,20 @@
                     h2hNote = ' Precedenti diretti ' + vittorie + '-' + (scontri.length - vittorie) + ' inclusi.';
                 }
             }
-            prob = Math.max(0.05, Math.min(0.95, prob));
+            prob = Math.max(0.02, Math.min(0.98, prob));
 
+            // Incertezza in stile Glicko (semplificata): pochi dati recenti
+            // usati nell'Elo -> la stima viene tirata verso il 50%, così non
+            // ci fidiamo di un margine "vistoso" costruito su 1-2 partite.
+            const rd = Math.max(50, 350/Math.sqrt(1 + nMatchesMin/1.5));
+            const confidence = Math.max(0, Math.min(1, 1 - (rd-50)/300));
+            prob = 0.5 + (prob-0.5)*confidence;
+
+            const surfNote = surface ? (' Superficie (' + surface + ') inclusa al 50%.') : '';
             const base = parts.length < 3
                 ? 'Stima parziale: manca ' + (3-parts.length) + ' componente su 3 (stagione/ranking/Elo dalle ultime partite).'
-                : 'Stima su bilancio stagionale, ranking ed Elo dalle ultime partite (avversari storici assunti a Elo medio, non è un Elo reale su tutta la carriera).';
-            return { prob, componentsUsed:parts.length, reason: base + h2hNote };
+                : 'Stima su bilancio stagionale, ranking ed Elo dalle ultime partite (quote storiche come aspettativa quando note; confidenza ' + (confidence*100).toFixed(0) + '% in base ai dati recenti disponibili).';
+            return { prob, componentsUsed:parts.length, confidence, reason: base + surfNote + h2hNote };
         }
 
         async function fetchLiveMatches() {
@@ -359,28 +402,63 @@
                 const data = await response.json();
                 if(!response.ok || data.error) throw new Error(data.error || 'Fonte non disponibile');
                 appData.palinsesto = data.matches.map(m => ({
-                    id: String(m.id), tournament:m.tournament,
+                    id: String(m.id), tournament:m.tournament, tournamentUrl:m.tournamentUrl,
                     commenceTime:new Date(m.startsAt).toLocaleTimeString('it-IT',{timeZone:'Europe/Rome',hour:'2-digit',minute:'2-digit'}),
                     startsAt:m.startsAt, p1:m.p1, p2:m.p2, match:m.p1+' vs '+m.p2, market:'Statistiche in caricamento',
                     oddsPair:m.odds, odds:m.odds[0], fairOdds:null, prob:null, action:'DATI INSUFFICIENTI',stake:null, profiles:m.profiles
                 }));
                 document.getElementById('data-status').textContent = 'Fonte: TennisExplorer · Recuperato '+new Date(data.updated).toLocaleString('it-IT')+' · Quote indicative, non quote BANCA Betfair.';
                 saveData();
+
+                // La superficie è per torneo, non per partita: la richiediamo
+                // una sola volta per ogni torneo e la riusiamo per tutte le
+                // sue partite (sperimentale, vedi /api/surface).
+                const surfaceCache = {};
+                async function getSurface(tournamentUrl) {
+                    if (!tournamentUrl) return null;
+                    if (tournamentUrl in surfaceCache) return surfaceCache[tournamentUrl];
+                    try {
+                        const r = await fetch('/api/surface?path=' + encodeURIComponent(tournamentUrl));
+                        const d = await r.json();
+                        surfaceCache[tournamentUrl] = d.surface || null;
+                    } catch { surfaceCache[tournamentUrl] = null; }
+                    return surfaceCache[tournamentUrl];
+                }
+
                 const queue=[...appData.palinsesto];
                 await Promise.all(Array.from({length:2},async()=>{
                     while(queue.length){const item=queue.shift();
                         const labels=[item.p1,item.p2];
-                        const stats=await Promise.all(item.profiles.map(async(path,i)=>{
-                            try{const r=await fetch('/api/profile?path='+encodeURIComponent(path)+'&label='+encodeURIComponent(labels[i]));if(!r.ok)return null;return await r.json();}catch{return null;}
-                        }));
+                        const [stats, surface, matchOdds] = await Promise.all([
+                            Promise.all(item.profiles.map(async(path,i)=>{
+                                try{const r=await fetch('/api/profile?path='+encodeURIComponent(path)+'&label='+encodeURIComponent(labels[i]));if(!r.ok)return null;return await r.json();}catch{return null;}
+                            })),
+                            getSurface(item.tournamentUrl),
+                            (async()=>{ try{const r=await fetch('/api/match-odds?id='+encodeURIComponent(item.id)); return await r.json();}catch{return null;} })()
+                        ]);
                         item.stats=stats;
-                        if(stats.every(Boolean) && item.oddsPair && item.oddsPair.length===2 && item.oddsPair.every(o=>o>0)){
-                            const fav1 = item.oddsPair[0] <= item.oddsPair[1];
-                            const favOdds = fav1 ? item.oddsPair[0] : item.oddsPair[1];
+                        item.surface=surface;
+
+                        // Se la pagina di dettaglio ci dà una media multi-bookmaker
+                        // valida (sperimentale), la preferiamo alla singola quota
+                        // presa a caso dal palinsesto.
+                        let oddsPair = item.oddsPair;
+                        if (matchOdds && matchOdds.avgOdds && matchOdds.avgOdds.every(o=>o>1)) {
+                            oddsPair = matchOdds.avgOdds;
+                            item.oddsSource = 'media di ' + matchOdds.bookmakerCount + ' bookmaker';
+                            item.openOdds = matchOdds.openOdds || null;
+                        } else {
+                            item.oddsSource = 'singolo bookmaker (palinsesto)';
+                            item.openOdds = null;
+                        }
+
+                        if(stats.every(Boolean) && oddsPair && oddsPair.length===2 && oddsPair.every(o=>o>0)){
+                            const fav1 = oddsPair[0] <= oddsPair[1];
+                            const favOdds = fav1 ? oddsPair[0] : oddsPair[1];
                             const favStats = fav1 ? stats[0] : stats[1], dogStats = fav1 ? stats[1] : stats[0];
                             const favName = fav1 ? item.p1 : item.p2;
                             const dogName = fav1 ? item.p2 : item.p1;
-                            const est = estimateProbabilityClient(favStats, dogStats, favName, dogName);
+                            const est = estimateProbabilityClient(favStats, dogStats, favName, dogName, surface);
                             if (est.prob == null) {
                                 item.market = 'Analisi non disponibile: ' + est.reason;
                                 item.prob = null; item.action = 'DATI INSUFFICIENTI';
@@ -399,10 +477,11 @@
                                 item.margin = edge;
                                 item.bookProb = +implied.toFixed(1);
                                 item.componentsUsed = est.componentsUsed;
+                                item.confidence = est.confidence;
                                 const plan = item.action !== 'FUORI SOGLIA' ? calculateStakePlan(favOdds, probPct, item.action === 'BANCA' ? 'banca' : 'punta') : null;
                                 item.stake = plan ? plan.stake : null;
                                 item.liability = plan ? plan.liability : null;
-                                item.market = favName + ' · modello ' + probPct + '% vs book ' + implied.toFixed(1) + '% · margine ' + (edge>=0?'+':'') + edge.toFixed(1) + ' punti · ' + est.reason;
+                                item.market = favName + ' · modello ' + probPct + '% vs book ' + implied.toFixed(1) + '% · margine ' + (edge>=0?'+':'') + edge.toFixed(1) + ' punti · quote: ' + item.oddsSource + ' · ' + est.reason;
                             }
                         } else {
                             item.market = stats.every(Boolean) ? 'Quote non disponibili per questo match' : 'Fonte statistica non disponibile';

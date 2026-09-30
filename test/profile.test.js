@@ -1,4 +1,5 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import {profileStats,estimateProbability} from '../lib/source.js';
+import {test} from 'node:test';import assert from 'node:assert/strict';import {profileStats} from '../lib/source.js';
+import {eloDaStorico, calcolaProbabilitaVittoria, combinaLogOdds} from '../lib/elo.js';
 
 const fixture=`
 <div>Current/Highest rank - singles: 70. / 6.</div>
@@ -29,22 +30,40 @@ test('reads rank, season row and recent matches, crediting the win to whoever is
   assert.equal(s.recent[2].won, true);
 });
 
+test('recent matches also carry the historical odds for our player and the opponent', () => {
+  const s = profileStats(fixture, 'Hurkacz H.');
+  // 11.02.: Bublik A. - Hurkacz H., quote 1.70/2.14 -> Hurkacz (secondo) ha 2.14, Bublik 1.70
+  assert.equal(s.recent[0].ownOdds, 2.14);
+  assert.equal(s.recent[0].oppOdds, 1.70);
+  // 20.01.: Hurkacz H. - Bergs Z., quote 1.38/3.03 -> Hurkacz (primo) ha 1.38
+  assert.equal(s.recent[2].ownOdds, 1.38);
+  assert.equal(s.recent[2].oppOdds, 3.03);
+});
+
 test('without a matching label, recent stays null instead of guessing', () => {
   const s = profileStats(fixture, null);
   assert.equal(s.recent, null);
 });
 
-test('estimateProbability blends the three components and favours the stronger profile', () => {
-  const strong = profileStats(fixture, 'Hurkacz H.');
-  const weak = { rank: 250, seasonColumns: ['2026', '12/18', null, null, null, null, null], recent: [{won:false},{won:false},{won:true},{won:false}] };
-  const est = estimateProbability(strong, weak);
-  assert.equal(est.componentsUsed, 3);
-  assert.ok(est.prob > 0.5 && est.prob < 1);
+test('the full pipeline (profilo reale + Elo da storico + log-odds) favours the stronger profile', () => {
+  const strongProfile = profileStats(fixture, 'Hurkacz H.');
+  const weakProfile = { rank: 250, seasonColumns: ['2026', '12/18', null, null, null, null, null], recent: [{opponent:'X',won:false},{opponent:'Y',won:false},{opponent:'Z',won:true},{opponent:'W',won:false}] };
+
+  const pair=s=>{const m=s&&String(s).match(/^(\d+)\/(\d+)$/);return m?{w:+m[1],l:+m[2]}:null;};
+  const rate=p=>p?(p.w+1)/(p.w+p.l+2):null;
+  const rankShare=(1/strongProfile.rank)/(1/strongProfile.rank+1/weakProfile.rank);
+  const rA=rate(pair(strongProfile.seasonColumns[1])), rB=rate(pair(weakProfile.seasonColumns[1]));
+  const seasonShare=rA/(rA+rB);
+  const eloA=eloDaStorico(strongProfile.recent,'Hurkacz H.').elo;
+  const eloB=eloDaStorico(weakProfile.recent,'Rivale').elo;
+  const eloShare=calcolaProbabilitaVittoria(eloA,eloB);
+
+  const combined = combinaLogOdds([[0.45,seasonShare],[0.25,rankShare],[0.30,eloShare]]);
+  assert.equal(combined.componentiUsate, 3);
+  assert.ok(combined.prob > 0.5 && combined.prob < 1);
 });
 
 test('missing data on both sides refuses to invent a probability', () => {
-  const empty = { rank: null, seasonColumns: null, recent: null };
-  const est = estimateProbability(empty, empty);
-  assert.equal(est.prob, null);
-  assert.match(est.reason, /Dati insufficienti/);
+  const combined = combinaLogOdds([[0.45,null],[0.25,null],[0.30,null]]);
+  assert.equal(combined, null);
 });

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PlayerStats, eloDaStorico, calcolaProbabilitaVittoria, bonusH2H } from '../lib/elo.js';
+import { PlayerStats, eloDaStorico, calcolaProbabilitaVittoria, bonusH2H, ratingDeviation, shrinkByConfidence, combinaLogOdds } from '../lib/elo.js';
 
 test('a win against an average opponent raises Elo, a loss lowers it', () => {
   const p = new PlayerStats('A.');
@@ -47,4 +47,54 @@ test('bonusH2H rewards a positive head-to-head record and is capped at ±0.05', 
   assert.equal(bonusH2H(manyLosses, 'B.'), -0.05);
   assert.equal(bonusH2H(null, 'B.'), 0);
   assert.equal(bonusH2H([{ opponent: 'C.', won: true }], 'B.'), 0);
+});
+
+test('a historical odds value drives the Elo update instead of the flat 1500 fallback', () => {
+  // Vittoria "a sorpresa" (quota alta = avversario dato per favorito):
+  // deve alzare l'Elo molto più che una vittoria a quota bassa (scontata).
+  const surprise = eloDaStorico([{ opponent: 'X', won: true, ownOdds: 4.0 }], 'A.');
+  const expected = eloDaStorico([{ opponent: 'X', won: true, ownOdds: 1.2 }], 'A.');
+  assert.ok(surprise.elo > expected.elo);
+});
+
+test('eloDaStorico falls back to the flat-1500 assumption when no historical odds are known', () => {
+  const noOdds = eloDaStorico([{ opponent: 'X', won: true }], 'A.');
+  assert.ok(noOdds.elo > 1500);
+});
+
+test('ratingDeviation is high with no matches and shrinks toward the floor with more', () => {
+  assert.equal(ratingDeviation(0), 350);
+  assert.ok(ratingDeviation(10) < ratingDeviation(2));
+  assert.ok(ratingDeviation(1000) >= 50);
+});
+
+test('shrinkByConfidence pulls thin-data estimates toward 0.5 and leaves solid ones mostly intact', () => {
+  assert.equal(shrinkByConfidence(0.9, 0), 0.5);
+  const shrunkThin = shrinkByConfidence(0.9, 1);
+  const shrunkSolid = shrinkByConfidence(0.9, 10);
+  assert.ok(shrunkThin < shrunkSolid);
+  assert.ok(shrunkSolid > 0.7 && shrunkSolid < 0.9);
+});
+
+test('combinaLogOdds ignores missing components and returns null with none available', () => {
+  assert.equal(combinaLogOdds([[1, null], [1, null]]), null);
+  const r = combinaLogOdds([[0.5, 0.7], [0.5, null]]);
+  assert.equal(r.componentiUsate, 1);
+  assert.ok(Math.abs(r.prob - 0.7) < 1e-9);
+});
+
+test('combinaLogOdds agrees with all components exactly when they all agree', () => {
+  const r = combinaLogOdds([[1, 0.7], [1, 0.7], [1, 0.7]]);
+  assert.ok(Math.abs(r.prob - 0.7) < 1e-9);
+});
+
+test('combinaLogOdds is not simply the linear average when components disagree', () => {
+  // La combinazione in log-odds è il modo statisticamente corretto di sommare
+  // fonti indipendenti (come nell'aggiornamento bayesiano) - non è pensata
+  // per essere "più prudente" della media lineare, anzi può essere più decisa
+  // quando le fonti concordano parzialmente. È shrinkByConfidence (Glicko),
+  // non questa funzione, a tenere a bada l'eccesso di sicurezza sui dati scarsi.
+  const linear = (0.99 + 0.5 + 0.5) / 3;
+  const r = combinaLogOdds([[1, 0.99], [1, 0.5], [1, 0.5]]);
+  assert.ok(Math.abs(r.prob - linear) > 0.01);
 });

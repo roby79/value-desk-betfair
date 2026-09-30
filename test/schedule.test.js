@@ -7,6 +7,7 @@ test('tournament name comes from its own link, even if the header cell also has 
  const html = '<span class="tab">28. 09. 2026</span><tr class="head flags"><td class="t-name" colspan="2"><a href="/chengdu/2026/atp-men/">Chengdu</a> Live streams<a href="http://aff.example/">bet365</a></td></tr>' + row();
  const r = parseSchedule(html, new Date('2026-09-28T11:00Z'));
  assert.equal(r[0].tournament, 'Chengdu');
+ assert.equal(r[0].tournamentUrl, '/chengdu/2026/atp-men/');
 });
 test('a nested "class=head" div inside a match row (streams tooltip) is not mistaken for a tournament header',()=>{
  const withStreams=(time='14:00')=>`<tr><td class="first time">${time}<br/><img src="/res/img/icon-tv.gif"/><div class="streams"><div class="head tl">Live streams</div><div class="body"><a href="http://x">bet365</a></div></div></td><td><a href="/player/a/">A</a></td><td class="result"></td><td class="h2h">2</td><td class="course">1.8</td><td class="course">2.1</td><td><a href="/match-detail/?id=1">info</a></td></tr><tr><td><a href="/player/b/">B</a></td><td class="result"></td></tr>`;
@@ -17,7 +18,9 @@ test('a nested "class=head" div inside a match row (streams tooltip) is not mist
 });
 test('a normal tournament header is kept as the tournament name',()=>{
  const html='<span class="tab">28. 09. 2026</span><tr class="head"><td>Rotterdam</td></tr>'+row();
- assert.equal(parseSchedule(html,new Date('2026-09-28T11:00Z'))[0].tournament,'Rotterdam');
+ const r=parseSchedule(html,new Date('2026-09-28T11:00Z'));
+ assert.equal(r[0].tournament,'Rotterdam');
+ assert.equal(r[0].tournamentUrl,null);
 });
 test('a "live streams" ticker header is treated as unidentified, and unidentified matches are filtered out',()=>{
  const html='<span class="tab">28. 09. 2026</span><tr class="head"><td>13:30 Live streams bet365 Unibet</td></tr>'+row();
