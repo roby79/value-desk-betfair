@@ -20,6 +20,23 @@ confronto. Su un caso reale verificato a mano (Arnaldi-Sakamoto, quote
 partita di qualche punto verso PUNTA, quanto dipende dal margine di quel
 bookmaker su quella partita.
 
+## Secondo bug trovato: il margine era ancora dentro l'Elo storico
+
+Dopo il primo fix (margine tolto dal confronto di oggi), il segnale restava
+quasi sempre BANCA anche su partite ATP 500 (Beijing, Tokyo) con giocatori
+affermati — un utente ha fatto notare che non erano Challenger minori, il
+che rende molto meno credibile che fosse un'inefficienza di mercato vera.
+Trovato: l'Elo ricostruito dalle ultime partite usava `1/ownOdds` (quota
+storica del giocatore, con margine) come aspettativa, **senza togliere il
+margine nemmeno lì**. Un giocatore spesso favorito in passato — tipicamente
+proprio i giocatori più forti/affermati — riceveva sistematicamente meno
+merito del dovuto per le vittorie da favorito, perché confrontate con
+un'aspettativa gonfiata. Corretto: quando sono note sia la quota nostra sia
+quella dell'avversario in una partita storica, l'aspettativa si calcola già
+al netto del margine (stesso principio del primo fix, applicato allo
+storico). Simulazione: un profilo "spesso favorito e vincente" che prima
+sarebbe stato sottostimato ora riceve una stima plausibile.
+
 ## Come funziona la stima (v2)
 
 Tre componenti combinate **in log-odds** (non media lineare — è il modo

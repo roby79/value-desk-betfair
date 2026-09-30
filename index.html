@@ -332,15 +332,26 @@
             }
 
             // Elo ricostruito rigiocando le ultime partite (dalla più vecchia).
-            // Quando conosciamo la quota storica del nostro giocatore in quella
-            // partita, usiamo la probabilità implicita di quella quota come
-            // aspettativa (il mercato di allora sapeva già quanto fosse forte
-            // l'avversario); altrimenti si torna al fallback avversario-medio.
+            // Quando conosciamo entrambe le quote storiche di quella partita,
+            // usiamo la probabilità implicita già al netto del margine del
+            // bookmaker come aspettativa - altrimenti un giocatore spesso
+            // favorito in passato (tipicamente i più forti) riceverebbe
+            // sistematicamente meno merito del dovuto per le vittorie da
+            // favorito, confrontate con un'aspettativa gonfiata dal margine.
+            // Con solo la quota nostra nota, si usa quella da sola; senza
+            // nessuna delle due si torna al fallback avversario-medio.
             const eloFromRecent = recent => {
                 if (!recent || !recent.length) return { elo:null, n:0 };
                 let elo = 1500;
                 [...recent].reverse().forEach(m => {
-                    const expected = (m.ownOdds && m.ownOdds > 1.01) ? 1/m.ownOdds : 1/(1+Math.pow(10,(1500-elo)/400));
+                    let expected;
+                    if (m.ownOdds > 1.01 && m.oppOdds > 1.01) {
+                        expected = (1/m.ownOdds) / (1/m.ownOdds + 1/m.oppOdds);
+                    } else if (m.ownOdds > 1.01) {
+                        expected = 1/m.ownOdds;
+                    } else {
+                        expected = 1/(1+Math.pow(10,(1500-elo)/400));
+                    }
                     elo += 20 * ((m.won?1:0) - expected);
                 });
                 return { elo, n: recent.length };

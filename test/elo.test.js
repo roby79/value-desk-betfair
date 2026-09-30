@@ -62,6 +62,25 @@ test('eloDaStorico falls back to the flat-1500 assumption when no historical odd
   assert.ok(noOdds.elo > 1500);
 });
 
+test('a frequent-favourite winning routinely gets more Elo credit once the bookmaker margin is removed from the historical expectation', () => {
+  // Bug reale trovato su dati veri (Cerundolo, Arnaldi - giocatori affermati,
+  // spesso favoriti): usare 1/ownOdds da solo come aspettativa (grezza, con
+  // margine) penalizza sistematicamente le vittorie da favorito, perché il
+  // margine gonfia quell'aspettativa. Con anche oppOdds nota, la togliamo.
+  const rawOnly = m => { // vecchio comportamento, per confronto nel test
+    let elo = 1500;
+    [...m].reverse().forEach(x => {
+      const expected = (x.ownOdds && x.ownOdds > 1.01) ? 1/x.ownOdds : 0.5;
+      elo += 20 * ((x.won?1:0) - expected);
+    });
+    return elo;
+  };
+  const partite = Array.from({length:5}, () => ({ opponent:'X', won:true, ownOdds:1.4, oppOdds:3.2 }));
+  const eloVecchio = rawOnly(partite);
+  const eloNuovo = eloDaStorico(partite, 'A.').elo;
+  assert.ok(eloNuovo > eloVecchio);
+});
+
 test('ratingDeviation is high with no matches and shrinks toward the floor with more', () => {
   assert.equal(ratingDeviation(0), 350);
   assert.ok(ratingDeviation(10) < ratingDeviation(2));
