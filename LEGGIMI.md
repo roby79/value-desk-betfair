@@ -4,6 +4,22 @@ Palinsesto e profili reali da TennisExplorer via Pages Functions. Il
 palinsesto legge circa 250 intestazioni torneo al giorno e filtra tornei
 minori e partite senza quota reale.
 
+## Correzione importante: margine del bookmaker tolto dal confronto
+
+Un utente ha notato che il segnale usciva **quasi sempre BANCA, mai PUNTA** su
+tutto il palinsesto — segno plausibile di un bug sistematico, non di un
+vantaggio reale. Trovato: confrontavamo il modello contro il "Book%" grezzo
+(100/quota), che include il margine del bookmaker (overround) — le due
+probabilità implicite grezze di una partita sommano sempre più di 100%
+(tipicamente 104-108%), e quel margine gonfia il Book% della favorita più
+del dovuto, spingendo il confronto sempre verso "la favorita è sopravvalutata"
+a prescindere da cosa dicesse il modello. Corretto normalizzando le due
+probabilità implicite in modo che sommino esattamente a 100% prima del
+confronto. Su un caso reale verificato a mano (Arnaldi-Sakamoto, quote
+1,67/2,18), il Book% è sceso da 59,5% a 56,6% — la correzione sposta ogni
+partita di qualche punto verso PUNTA, quanto dipende dal margine di quel
+bookmaker su quella partita.
+
 ## Come funziona la stima (v2)
 
 Tre componenti combinate **in log-odds** (non media lineare — è il modo

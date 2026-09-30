@@ -471,6 +471,7 @@
                         if(stats.every(Boolean) && oddsPair && oddsPair.length===2 && oddsPair.every(o=>o>0)){
                             const fav1 = oddsPair[0] <= oddsPair[1];
                             const favOdds = fav1 ? oddsPair[0] : oddsPair[1];
+                            const dogOdds = fav1 ? oddsPair[1] : oddsPair[0];
                             const favStats = fav1 ? stats[0] : stats[1], dogStats = fav1 ? stats[1] : stats[0];
                             const favName = fav1 ? item.p1 : item.p2;
                             const dogName = fav1 ? item.p2 : item.p1;
@@ -483,7 +484,17 @@
                                 item.prob = null; item.action = 'FUORI RANGE';
                             } else {
                                 const probPct = +(est.prob*100).toFixed(1);
-                                const implied = 100/favOdds;
+                                // Il margine del bookmaker (overround) va tolto prima del
+                                // confronto: le due probabilità implicite grezze sommano
+                                // sempre più di 100% (è cosi che il book guadagna), e
+                                // confrontare il modello contro quel Book% gonfiato
+                                // sbilancia il segnale sempre verso "la favorita è
+                                // sopravvalutata" (BANCA), a prescindere da cosa dica
+                                // davvero il modello. Qui normalizziamo le due probabilità
+                                // implicite in modo che sommino esattamente a 100%.
+                                const rawFav = 1/favOdds, rawDog = 1/dogOdds;
+                                const overround = rawFav + rawDog;
+                                const implied = 100 * rawFav / overround;
                                 const edge = probPct - implied;
                                 item.prob = probPct;
                                 item.fairOdds = +(100/probPct).toFixed(2);
