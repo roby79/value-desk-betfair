@@ -23,10 +23,9 @@ test('fetchSurface returns null without a tournament URL or when nothing is foun
   } finally { restore(); }
 });
 
-test('fetchMatchOdds averages multiple bookmaker rows and separates an opening-odds row', async () => {
+test('fetchMatchOdds averages plausible two-way rows and now leaves openOdds null (not reliable enough yet)', async () => {
   const html = `
     <table>
-      <tr><td>Opening</td><td>1.90</td><td>1.95</td></tr>
       <tr><td>bet365</td><td>1.80</td><td>2.05</td></tr>
       <tr><td>1xBet</td><td>1.82</td><td>2.00</td></tr>
     </table>
@@ -37,7 +36,29 @@ test('fetchMatchOdds averages multiple bookmaker rows and separates an opening-o
     assert.equal(r.bookmakerCount, 2);
     assert.equal(r.avgOdds[0], 1.81);
     assert.equal(r.avgOdds[1], 2.02);
-    assert.deepEqual(r.openOdds, [1.90, 1.95]);
+    assert.equal(r.openOdds, null);
+  } finally { restore(); }
+});
+
+test('fetchMatchOdds drops an entire row when its first pair fails the plausibility check, e.g. a totals threshold before that market\'s own odds', async () => {
+  // Riproduce il caso reale trovato in produzione: una riga con una soglia
+  // "22.5" (mercato Over/Under) seguita da quote di quel mercato. Le prime
+  // due "quote" lette sarebbero 22.5 e 1.90, che falliscono il controllo di
+  // plausibilità - l'intera riga va scartata, non recuperata con un'altra
+  // coppia (che potrebbe comunque appartenere a un mercato diverso).
+  const html = `
+    <table>
+      <tr><td>bet365</td><td>2.35</td><td>1.58</td></tr>
+      <tr><td>1xBet</td><td>2.40</td><td>1.55</td></tr>
+      <tr><td>bet365 Over/Under</td><td>22.5</td><td>1.90</td><td>1.95</td></tr>
+    </table>
+  `;
+  const restore = mockFetchOnce(html);
+  try {
+    const r = await fetchMatchOdds('3335232');
+    assert.equal(r.bookmakerCount, 2);
+    assert.equal(r.avgOdds[0], 2.38);
+    assert.equal(r.avgOdds[1], 1.56);
   } finally { restore(); }
 });
 
