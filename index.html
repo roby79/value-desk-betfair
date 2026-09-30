@@ -441,12 +441,28 @@
 
                         // Se la pagina di dettaglio ci dà una media multi-bookmaker
                         // valida (sperimentale), la preferiamo alla singola quota
-                        // presa a caso dal palinsesto.
+                        // presa a caso dal palinsesto - ma solo se è ragionevolmente
+                        // vicina a quella quota (entro il 10% per lato): il parser di
+                        // quella pagina non è ancora affidabile al 100% (può ancora
+                        // mischiare dentro qualche riga di un mercato diverso), quindi
+                        // se la media diverge troppo dalla fonte già collaudata,
+                        // scartiamo la media invece di rischiare un numero sbagliato.
                         let oddsPair = item.oddsPair;
+                        item.oddsRejected = false;
                         if (matchOdds && matchOdds.avgOdds && matchOdds.avgOdds.every(o=>o>1)) {
-                            oddsPair = matchOdds.avgOdds;
-                            item.oddsSource = 'media di ' + matchOdds.bookmakerCount + ' bookmaker';
-                            item.openOdds = matchOdds.openOdds || null;
+                            const ref = item.oddsPair;
+                            const closeEnough = ref && ref.length===2 && ref.every(o=>o>0) &&
+                                Math.abs(matchOdds.avgOdds[0]-ref[0])/ref[0] < 0.10 &&
+                                Math.abs(matchOdds.avgOdds[1]-ref[1])/ref[1] < 0.10;
+                            if (closeEnough) {
+                                oddsPair = matchOdds.avgOdds;
+                                item.oddsSource = 'media di ' + matchOdds.bookmakerCount + ' bookmaker';
+                                item.openOdds = matchOdds.openOdds || null;
+                            } else {
+                                item.oddsRejected = true;
+                                item.oddsSource = 'singolo bookmaker (media scartata: troppo diversa dal palinsesto)';
+                                item.openOdds = null;
+                            }
                         } else {
                             item.oddsSource = 'singolo bookmaker (palinsesto)';
                             item.openOdds = null;

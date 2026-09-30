@@ -31,11 +31,7 @@ Novità rispetto alla versione precedente:
   versione semplificata che cattura la stessa idea con una formula fissa.
   Verificato con simulazione: con 1 partita a testa la confidenza scende
   intorno al 25%, con 10 partite sale intorno al 75%.
-- **Quote multi-bookmaker (sperimentale)**: `/api/match-odds` legge la pagina
-  di dettaglio della partita e, se trova più righe di quote, ne fa la media
-  invece di affidarsi alla singola quota (di un bookmaker scelto a caso)
-  presa dal palinsesto. Se la pagina segnala anche una quota di apertura, la
-  teniamo separata (mostrata ma non ancora usata nel calcolo del margine).
+- **Quote multi-bookmaker (sperimentale, con rete di sicurezza)**: `/api/match-odds` legge la pagina di dettaglio della partita e ne fa la media, scartando le righe la cui coppia di numeri non ha un margine da bookmaker plausibile (somma delle probabilità implicite tra 0,97 e 1,25) — utile per non mischiare dentro quote di un mercato diverso (es. una soglia Over/Under scambiata per una quota). Anche così, un test reale ha mostrato un lato quasi perfetto e l'altro ancora spostato del 15% circa: il parser non è ancora perfetto. Per questo, lato client, la media viene **usata solo se resta entro il 10% dalla singola quota già affidabile del palinsesto**; se si discosta di più, la buttiamo e torniamo alla quota singola invece di rischiare un numero contaminato.
 
 Più un correttivo sui precedenti diretti (±5 punti percentuali massimo),
 come prima.
