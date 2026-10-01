@@ -1,150 +1,132 @@
-# Value Desk — Elo v2: quote storiche, superficie, Glicko, log-odds, quote multi-bookmaker
+# Value Desk — Strategia sul movimento quota
 
-Palinsesto e profili reali da TennisExplorer via Pages Functions. Il
-palinsesto legge circa 250 intestazioni torneo al giorno e filtra tornei
-minori e partite senza quota reale.
+Cambio di architettura rispetto a tutte le versioni precedenti di questo
+progetto: **niente più un modello statistico nostro (Elo, ranking, bilancio
+stagionale) da confrontare con il book**. Dopo un lungo percorso di ricerca
+e un backtest reale che ha smentito quell'approccio (vedi "Perché questo
+cambio" più sotto), il sistema ora segue direttamente il mercato: se la
+quota di un lato si muove abbastanza da quando l'abbiamo vista la prima
+volta, quello è il segnale.
 
-## Correzione importante: margine del bookmaker tolto dal confronto
+## Come funziona
 
-Un utente ha notato che il segnale usciva **quasi sempre BANCA, mai PUNTA** su
-tutto il palinsesto — segno plausibile di un bug sistematico, non di un
-vantaggio reale. Trovato: confrontavamo il modello contro il "Book%" grezzo
-(100/quota), che include il margine del bookmaker (overround) — le due
-probabilità implicite grezze di una partita sommano sempre più di 100%
-(tipicamente 104-108%), e quel margine gonfia il Book% della favorita più
-del dovuto, spingendo il confronto sempre verso "la favorita è sopravvalutata"
-a prescindere da cosa dicesse il modello. Corretto normalizzando le due
-probabilità implicite in modo che sommino esattamente a 100% prima del
-confronto. Su un caso reale verificato a mano (Arnaldi-Sakamoto, quote
-1,67/2,18), il Book% è sceso da 59,5% a 56,6% — la correzione sposta ogni
-partita di qualche punto verso PUNTA, quanto dipende dal margine di quel
-bookmaker su quella partita.
+1. **TennisExplorer** resta la fonte del palinsesto giornaliero e delle
+   quote (invariato, già debuggato a fondo nelle versioni precedenti).
+2. **Cloudflare KV** (`ODDS_KV`) registra, per ogni partita, la quota vista
+   la prima volta ("apertura") e la aggiorna a ogni controllo successivo
+   ("attuale"). Il record scade da solo dopo 4 giorni.
+3. **Un Worker separato** (`cron-worker.js`, da pubblicare come Worker a sé,
+   non dentro il progetto Pages) richiama `/api/schedule` ogni ora, così il
+   movimento si accumula anche senza che l'app sia aperta. Cloudflare Pages
+   Functions non supporta Cron Trigger nativamente — da qui la necessità di
+   un Worker a parte.
+4. **Il segnale**: se la quota di un lato si è accorciata di almeno una
+   soglia da quando l'abbiamo vista la prima volta, è PUNTA su quel lato.
+   Soglie e range sono **congelati** dal backtest (vedi sotto) — non vanno
+   cambiati senza un nuovo test.
 
-## Secondo bug trovato: il margine era ancora dentro l'Elo storico
+| Parametro | Tour principale | Challenger |
+|---|---|---|
+| Soglia movimento minima | 5% | 8% |
+| Range quota | 1,50 – 3,50 | 1,50 – 3,50 |
+| Stake (% cassa attuale) | 5-8%→2% · 8-12%→3% · 12%+→4% | 8-10%→2% · 10-14%→3% · 14%+→4% |
 
-Dopo il primo fix (margine tolto dal confronto di oggi), il segnale restava
-quasi sempre BANCA anche su partite ATP 500 (Beijing, Tokyo) con giocatori
-affermati — un utente ha fatto notare che non erano Challenger minori, il
-che rende molto meno credibile che fosse un'inefficienza di mercato vera.
-Trovato: l'Elo ricostruito dalle ultime partite usava `1/ownOdds` (quota
-storica del giocatore, con margine) come aspettativa, **senza togliere il
-margine nemmeno lì**. Un giocatore spesso favorito in passato — tipicamente
-proprio i giocatori più forti/affermati — riceveva sistematicamente meno
-merito del dovuto per le vittorie da favorito, perché confrontate con
-un'aspettativa gonfiata. Corretto: quando sono note sia la quota nostra sia
-quella dell'avversario in una partita storica, l'aspettativa si calcola già
-al netto del margine (stesso principio del primo fix, applicato allo
-storico). Simulazione: un profilo "spesso favorito e vincente" che prima
-sarebbe stato sottostimato ora riceve una stima plausibile.
+Un torneo è riconosciuto come Challenger se il nome contiene letteralmente
+"challenger" (così come arriva da TennisExplorer) — verificato affidabile
+su tutti i tornei visti finora.
 
-## Come funziona la stima (v2)
+Lo stake resta soggetto al de-risking già esistente: se la cassa scende
+sotto l'80% del suo massimo storico, la percentuale si dimezza. Nessun
+Kelly: senza una stima di probabilità nostra, non c'è nulla su cui
+calcolarlo — lo stake è una percentuale fissa per fascia di movimento.
 
-Tre componenti combinate **in log-odds** (non media lineare — è il modo
-statisticamente corretto di sommare fonti indipendenti, lo stesso principio
-dell'aggiornamento bayesiano): **45% bilancio stagionale**, **25% ranking**,
-**30% Elo ricostruito dalle ultime partite**.
+## Perché questo cambio (la storia breve)
 
-Novità rispetto alla versione precedente:
+Le versioni precedenti confrontavano un Elo costruito da noi con il book,
+segnalando quando divergevano. Un utente ha notato che il segnale usciva
+quasi sempre "banca", su partite anche di alto livello (Beijing, Tokyo) — e
+insistendo ha fatto scoprire due bug reali (margine del bookmaker non
+tolto, né dal confronto né dall'Elo storico). Corretti quelli, il pattern
+restava. Una ricerca più approfondita ha trovato che la letteratura
+accademica documenta esattamente questo: un Elo semplice confrontato col
+book tende a perdere, specialmente sovra-puntando gli sfavoriti (Kovalchik
+2016, Angelini et al.). Un backtest vero, su 13.889 partite reali ATP/WTA
+2024-2025 (dati Valuebetennis + tennis-data.co.uk), ha confermato: quella
+strategia perdeva soldi a ogni soglia testata (-8% a -18% di ROI).
 
-- **Elo da quote storiche, non più avversario fisso a 1500**: per ogni
-  partita recente, se conosciamo la quota che aveva allora il nostro
-  giocatore (letta dallo storico del profilo), usiamo la probabilità
-  implicita di quella quota come aspettativa dell'aggiornamento Elo — il
-  mercato di allora sapeva già quanto fosse forte l'avversario. Quando la
-  quota storica non è nota, si torna al fallback avversario-medio.
-- **Superficie (sperimentale)**: se `/api/surface` riesce a leggere la
-  superficie del torneo di oggi, il bilancio-stagione si calcola al 50%
-  sull'aggregato e al 50% sulla colonna di superficie del profilo
-  (Clay/Hard/Indoors/Grass) — proporzione empiricamente testata da terzi
-  (Jeff Sackmann/tennisabstract.com), non scelta a caso.
-- **Incertezza in stile Glicko (semplificata)**: quante meno partite recenti
-  abbiamo usato per l'Elo, tanto più la stima finale viene tirata verso il
-  50% prima del confronto con il book. Non è il vero algoritmo Glicko
-  (iterativo, aggiorna l'incertezza di entrambi i giocatori insieme): è una
-  versione semplificata che cattura la stessa idea con una formula fissa.
-  Verificato con simulazione: con 1 partita a testa la confidenza scende
-  intorno al 25%, con 10 partite sale intorno al 75%.
-- **Quote multi-bookmaker (sperimentale, con rete di sicurezza)**: `/api/match-odds` legge la pagina di dettaglio della partita e ne fa la media, scartando le righe la cui coppia di numeri non ha un margine da bookmaker plausibile (somma delle probabilità implicite tra 0,97 e 1,25) — utile per non mischiare dentro quote di un mercato diverso (es. una soglia Over/Under scambiata per una quota). Anche così, un test reale ha mostrato un lato quasi perfetto e l'altro ancora spostato del 15% circa: il parser non è ancora perfetto. Per questo, lato client, la media viene **usata solo se resta entro il 10% dalla singola quota già affidabile del palinsesto**; se si discosta di più, la buttiamo e torniamo alla quota singola invece di rischiare un numero contaminato.
+Lo stesso backtest, applicato invece al **movimento della quota (apertura
+vs chiusura, su Pinnacle)**, ha dato risultati opposti: **ROI positivo a
+ogni soglia testata**, sia su tour principale (+9% a +15,8%) sia sui
+Challenger (più debole ma comunque positivo, +2,7% a +11,8%). Da qui la
+scelta di ripartire da questa base.
 
-Più un correttivo sui precedenti diretti (±5 punti percentuali massimo),
-come prima.
-
-**L'allerta scatta su entrambi i lati**: PUNTA se il modello preferisce la
-favorita di almeno 3 punti sul book; BANCA se preferisce la sfavorita di
-almeno 3 punti (stesso vantaggio letto dal lato opposto, nel tennis non c'è
-pareggio). Sotto soglia: "Fuori soglia", visibile ma non segnalata.
-
-Il modulo condiviso è `lib/elo.js` (testato, 12 test). La stessa logica di
-combinazione è duplicata in `index.html` perché la pagina non è un modulo ES
-e non può importare dal server — se cambi la formula, aggiornala in
-entrambi i punti.
-
-## Cosa NON abbiamo copiato, e perché
-
-Abbiamo verificato l'idea di usare le quote di un bookmaker "sharp" (es.
-Pinnacle) come riferimento più affidabile del book. Scartata: tecnicamente
-irraggiungibile da qui (protezione anti-bot, redirect loop), e soprattutto
-Pinnacle dichiara esplicitamente nei suoi termini che le quote sono
-proprietarie e non copiabili — non è terreno su cui costruire uno scraper.
-La media multi-bookmaker da TennisExplorer (sopra) è il compromesso onesto
-che resta dentro le regole che già rispettiamo.
-
-La correzione sulla percentuale di game vinti (dal punteggio dei set) resta
-NON implementata per lo stesso motivo di sempre: il formato del punteggio
-estratto in solo testo è ambiguo (non si distinguono le cifre del tie-break)
-senza vedere l'HTML grezzo della sezione.
-
-## Sperimentale: cosa aspettarsi al primo giro
-
-`/api/surface` e `/api/match-odds` leggono due pagine che non abbiamo mai
-potuto verificare con un HTML reale (a differenza del palinsesto e del
-profilo, verificati più volte con schermate vere). I parser sono scritti
-con la struttura più plausibile, con test che usano un HTML finto
-verosimile — ma è probabile che al primo utilizzo reale servano correzioni,
-come è già successo con il palinsesto. Se il campo `surface` o `avgOdds`
-tornano sempre `null`, non è necessariamente un problema del resto del
-sistema: mandami il JSON di uno di questi due endpoint per un match reale e
-sistemiamo il parser con gli stessi passi già usati per il palinsesto.
+**Il limite onesto da ricordare**: quel backtest misura il caso migliore
+teorico (sapere in anticipo quale lato si muoverà, entrando esattamente
+all'apertura). Nella pratica — rilevando il movimento a intervalli, non
+nell'istante esatto dell'apertura — il vantaggio reale sarà probabilmente
+più piccolo. Da qui la disciplina del registro (sotto): è l'unico modo per
+sapere quanto vantaggio resta davvero una volta eseguito sul campo.
 
 ## Installazione
-Copiare index.html, package.json, _routes.json e le cartelle functions, lib, test
-nella cartella del progetto, senza sostituire la cartella .git.
 
 ```bash
 npm test
 git add index.html package.json _routes.json functions lib test LEGGIMI.md
-git commit -m "Elo v2: quote storiche, superficie, Glicko, log-odds, quote multi-bookmaker"
+git commit -m "Strategia sul movimento quota: apertura/attuale, soglie congelate dal backtest"
 git push
 ```
 
-Dopo il deploy: /api/schedule risponde con day/source/updated/matches (ora
-con anche tournamentUrl per match); /api/surface?path=/torneo/2026/atp-men/
-e /api/match-odds?id=XXXX sono i due nuovi endpoint sperimentali - provali
-direttamente nel browser su un match reale per vedere cosa restituiscono.
+**Due cose da fare su Cloudflare, una tantum** (già fatte se segui questa
+conversazione dall'inizio):
+1. Namespace KV `VALUE_DESK_ODDS`, collegato al progetto Pages con il nome
+   variabile `ODDS_KV` (Impostazioni → Binding).
+2. Un Worker separato con dentro `cron-worker.js`, con un Cron Trigger
+   `0 * * * *` (ogni ora).
+
+## Come leggere l'app
+
+Il Palinsesto mostra, per ogni partita: apertura→attuale per entrambi i
+giocatori (con freccia di direzione), il movimento % di chi ha un segnale,
+e lo stake consigliato. Solo le righe **PUNTA** (verdi) sono occasioni —
+tutto il resto ("Fuori soglia", grigio) va ignorato.
+
+Registrando una giocata, il modale chiede **due quote separate**: quella
+"al segnale" (automatica, informativa) e quella "su Betfair" (da inserire
+a mano — è quella vera, quella che conta per il calcolo di vincita/perdita
+nello storico). Se lo stake calcolato scende sotto il minimo Betfair di
+€1, l'app te lo segnala esplicitamente; l'importo resta sempre modificabile.
+
+In Gestione Cassa, la sezione "Obiettivi & Disciplina" traccia quanti
+segnali hai registrato questa settimana/mese e il ROI del mese corrente,
+con un riferimento (+5-8% mensile, dal backtest) usato per la revisione
+periodica — non un bersaglio da inseguire forzando le puntate nei momenti
+storti.
 
 ## Verifiche e limiti
-Test locali: 30 superati (schedule, profilo, elo, match-detail), nessuna
-dipendenza npm, tutto eseguibile offline (i test di superficie/quote
-multi-bookmaker usano un fetch finto, non la rete reale). Sintassi JS
-verificata su entrambi gli script della pagina. Simulazione end-to-end del
-restringimento Glicko verificata a mano (confidenza 26% con 1 partita a
-testa, 75% con 10).
-Deploy Cloudflare NON effettuato da questo ambiente; verificare su Cloudflare.
-Il fuso fonte rilevato è GMT+1 fisso; visualizzazione Europe/Rome.
-Le quote sono indicative della fonte, NON quote eseguibili Betfair né quote BANCA.
-retrievedAt è il momento del recupero, non certificazione dell'aggiornamento
-della fonte.
 
-## Lavoro ancora necessario
-1. Verificare `/api/surface` e `/api/match-odds` su casi reali e correggere
-   il parser se necessario (vedi sopra).
-2. Correzione percentuale game vinti — ancora bloccata dall'ambiguità della
-   notazione punteggio in solo testo.
-3. Validazione dei pesi (45/25/30, blend superficie 50/50, soglia 3 punti,
-   formula Glicko) sui risultati futuri — non ancora fatta su dati nostri.
-4. Elo persistente tra le richieste (oggi si ricostruisce da zero a ogni
-   caricamento, dalle sole ultime 10 partite) — servirebbe uno storage
-   (es. KV di Cloudflare) per accumulare un Elo vero nel tempo, e per
-   tracciare davvero il movimento delle quote apertura→attuale nel tempo
-   invece di leggerlo (se disponibile) dalla sola pagina di dettaglio.
-5. Commissioni e responsabilità BANCA nel calcolo dello stake.
+Test locali: 15 superati (palinsesto + tracciamento movimento in KV, con
+KV finta in memoria per i test), nessuna dipendenza npm. Simulazione
+numerica delle bande di stake e del de-risking da drawdown verificata a
+mano (vedi cronologia del progetto).
+
+Il tracciamento del movimento parte da zero da oggi: non abbiamo (né
+possiamo avere gratuitamente) uno storico di apertura/chiusura per le
+partite già passate prima dell'attivazione di questo sistema — ogni
+partita vista per la prima volta diventa la sua stessa "apertura".
+
+Le quote restano quelle indicative di TennisExplorer, non quote eseguibili
+Betfair — da qui la necessità di inserire a mano la quota reale al momento
+della registrazione.
+
+## Lavoro ancora possibile, non fatto
+
+1. **Validare il vantaggio reale sul campo**: il backtest misura il caso
+   teorico migliore; serve un registro di 100+ segnali reali, con la quota
+   Betfair effettiva, prima di aumentare gli stake.
+2. **Rilevamento movimento più fine**: oggi il controllo è ogni ora; un
+   controllo più frequente (es. ogni 15-30 min) potrebbe catturare il
+   movimento più vicino al momento in cui accade, a costo di più richieste
+   verso TennisExplorer.
+3. **Distinguere Challenger "maggiori" da minori**: oggi tutti i Challenger
+   usano la stessa soglia; non abbiamo un modo affidabile di distinguere il
+   livello di montepremi dai dati disponibili.

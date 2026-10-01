@@ -115,7 +115,7 @@
             <p id="data-status" class="text-xs text-slate-400" role="status"></p>
             <div class="bg-dark-800 rounded-2xl border border-dark-700 overflow-hidden shadow-lg">
                 <div class="p-4 border-b border-dark-700 flex justify-between items-center">
-                    <h3 class="font-semibold text-white">Eventi Reali & Direzione Consigliata (Punta / Banca)</h3>
+                    <h3 class="font-semibold text-white">Eventi Reali & Movimento Quota</h3>
                     <span id="match-count-badge" class="text-xs bg-dark-700 text-slate-300 px-2.5 py-1 rounded-lg">0 match</span>
                 </div>
                 <div class="overflow-x-auto">
@@ -124,10 +124,10 @@
                             <tr class="bg-dark-900/50 text-slate-400 text-xs uppercase border-b border-dark-700">
                                 <th class="p-3">Torneo / Orario</th>
                                 <th class="p-3">Giocatore / Selezione</th>
-                                <th class="p-3">Quota</th>
-                                <th class="p-3">Quota Equa</th>
+                                <th class="p-3">Apertura → Attuale</th>
+                                <th class="p-3">Movimento</th>
                                 <th class="p-3">Segnale</th>
-                                <th class="p-3">Stake / Liability</th>
+                                <th class="p-3">Stake</th>
                                 <th class="p-3 text-right">Azioni</th>
                             </tr>
                         </thead>
@@ -172,6 +172,32 @@
 
         <!-- TAB 4: GESTIONE CASSA -->
         <div id="tab-bankroll" class="tab-content hidden space-y-6">
+            <div class="bg-dark-800 p-6 rounded-2xl border border-dark-700 shadow-lg space-y-4">
+                <h2 class="text-xl font-bold text-white">Obiettivi & Disciplina</h2>
+                <p class="text-xs text-slate-400">Un obiettivo di processo (quanti segnali tracciamo), non di risultato — il mese va giudicato sul ROI reale, non inseguito forzando le puntate.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-dark-900 p-4 rounded-xl border border-dark-700">
+                        <p class="text-xs text-slate-400">Segnali questa settimana</p>
+                        <p id="goal-week-count" class="text-xl font-bold text-white mt-1">0 / <span id="goal-week-target">15</span></p>
+                    </div>
+                    <div class="bg-dark-900 p-4 rounded-xl border border-dark-700">
+                        <p class="text-xs text-slate-400">ROI questo mese</p>
+                        <p id="goal-month-roi" class="text-xl font-bold mt-1">0.00%</p>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Riferimento dal backtest: +5-8% mensile</p>
+                    </div>
+                    <div class="bg-dark-900 p-4 rounded-xl border border-dark-700">
+                        <p class="text-xs text-slate-400">Segnali questo mese</p>
+                        <p id="goal-month-count" class="text-xl font-bold text-white mt-1">0</p>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Obiettivo settimanale (numero di segnali)</label>
+                    <div class="flex gap-2">
+                        <input type="number" step="1" min="1" id="input-weekly-goal" class="flex-1 bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                        <button onclick="updateWeeklyGoal()" class="bg-dark-700 hover:bg-dark-600 text-white font-semibold px-4 py-2 rounded-xl text-sm">Salva</button>
+                    </div>
+                </div>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-dark-800 p-6 rounded-2xl border border-dark-700 shadow-lg space-y-4">
                     <h2 class="text-xl font-bold text-white">Configurazione Bankroll Iniziale</h2>
@@ -224,13 +250,18 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Quota</label>
-                        <input type="number" step="0.01" min="1.01" id="modal-odds" required class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Quota al segnale</label>
+                        <input type="text" id="modal-signal-odds" readonly class="w-full bg-dark-900/50 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-400 cursor-not-allowed" placeholder="—">
                     </div>
                 </div>
                 <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Quota su Betfair (quella vera, inserita a mano)</label>
+                    <input type="number" step="0.01" min="1.01" id="modal-odds" required class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                </div>
+                <div>
                     <label id="modal-amount-label" class="block text-xs font-medium text-slate-400 mb-1">Stake (€)</label>
-                    <input type="number" step="0.01" min="0.1" id="modal-stake" required class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                    <input type="number" step="0.01" min="0.1" id="modal-stake" oninput="checkModalStakeWarning()" required class="w-full bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                    <p id="modal-stake-warning" class="text-[11px] text-amber-400 mt-1 hidden"></p>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Esito</label>
@@ -254,7 +285,8 @@
         let appData = {
             initialBankroll: 1000,
             palinsesto: [],
-            bets: []
+            bets: [],
+            goals: { weeklySignalTarget: 15 }
         };
 
         let bankrollChartInstance = null;
@@ -265,10 +297,51 @@
             if (saved) {
                 try { appData = JSON.parse(saved); } catch(e) { console.error(e); }
             }
+            // Retrocompatibilita': un salvataggio precedente a questa versione
+            // non ha ancora il campo "goals".
+            if (!appData.goals) appData.goals = { weeklySignalTarget: 15 };
             document.getElementById('input-initial-bank').value = appData.initialBankroll;
-            
+            document.getElementById('input-weekly-goal').value = appData.goals.weeklySignalTarget;
+
             renderAll();
             fetchLiveMatches();
+        }
+
+        function updateWeeklyGoal() {
+            const val = parseInt(document.getElementById('input-weekly-goal').value, 10);
+            if (!isNaN(val) && val > 0) {
+                appData.goals.weeklySignalTarget = val;
+                saveData();
+            }
+        }
+
+        // Obiettivi di processo: conta i segnali registrati questa
+        // settimana/mese (ISO, lunedi'-domenica) e il ROI del mese corrente -
+        // un riferimento di revisione periodica, non un bersaglio da inseguire
+        // forzando le puntate nei giorni storti.
+        function renderGoals() {
+            const now = new Date();
+            const dayOfWeek = (now.getDay() + 6) % 7; // 0 = lunedi'
+            const weekStart = new Date(now); weekStart.setDate(now.getDate() - dayOfWeek); weekStart.setHours(0,0,0,0);
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            const thisWeek = appData.bets.filter(b => new Date(b.date) >= weekStart);
+            const thisMonth = appData.bets.filter(b => new Date(b.date) >= monthStart);
+
+            document.getElementById('goal-week-count').innerHTML = thisWeek.length + ' / <span id="goal-week-target">' + appData.goals.weeklySignalTarget + '</span>';
+            document.getElementById('goal-month-count').innerText = thisMonth.length;
+
+            const settledMonth = thisMonth.filter(b => b.status === 'win' || b.status === 'loss');
+            let monthProfit = 0, monthStaked = 0;
+            settledMonth.forEach(b => {
+                monthStaked += b.stake;
+                if (b.status === 'win') monthProfit += b.side === 'banca' ? b.stake / (b.odds - 1) : (b.odds - 1) * b.stake;
+                if (b.status === 'loss') monthProfit -= b.stake;
+            });
+            const monthRoi = monthStaked > 0 ? (monthProfit / monthStaked) * 100 : 0;
+            const roiEl = document.getElementById('goal-month-roi');
+            roiEl.innerText = monthRoi.toFixed(2) + '%';
+            roiEl.className = 'text-xl font-bold mt-1 ' + (monthRoi >= 0 ? 'text-brand-500' : 'text-red-400');
         }
 
 
@@ -292,241 +365,100 @@
         }
 
         let loadingMatches = false;
-        // Stessa logica di lib/source.js:estimateProbability, duplicata qui perché
-        // questa pagina è uno script inline (non un modulo) e non importa dal
-        // server - va tenuta allineata se la formula cambia lato server.
-        // Stessa logica del modulo condiviso lib/elo.js, duplicata qui perché
-        // questa pagina è uno script inline (non un modulo ES) e non importa
-        // dal server - va tenuta allineata se la formula cambia lato server.
-        // Combina tre componenti (bilancio stagionale, ranking, Elo dalle
-        // ultime partite) più un correttivo sui precedenti diretti.
-        // Stessa logica del modulo condiviso lib/elo.js, duplicata qui perché
-        // questa pagina è uno script inline (non un modulo ES) e non importa
-        // dal server - va tenuta allineata se la formula cambia lato server.
-        // Combina quattro componenti: bilancio stagionale (con blend di
-        // superficie quando nota), ranking, Elo dalle ultime partite (con le
-        // quote storiche come aspettativa quando disponibili invece di un
-        // avversario fisso a 1500), più un correttivo H2H e un restringimento
-        // in stile Glicko quando i dati recenti sono pochi.
-        function estimateProbabilityClient(a, b, aName, bName, surface) {
-            const pair = s => { const m = s && String(s).match(/^(\d+)\/(\d+)$/); return m ? {w:+m[1], l:+m[2]} : null; };
-            const rate = p => p ? (p.w+1)/(p.w+p.l+2) : null;
 
-            const rankShare = (a.rank && b.rank) ? (1/a.rank)/(1/a.rank+1/b.rank) : null;
-
-            const sA = a.seasonColumns && pair(a.seasonColumns[1]), sB = b.seasonColumns && pair(b.seasonColumns[1]);
-            const rA = rate(sA), rB = rate(sB);
-            const seasonAggShare = (rA != null && rB != null) ? rA/(rA+rB) : null;
-
-            // Superficie (sperimentale): blend 50/50 con l'aggregato quando
-            // conosciamo la superficie di oggi, usando le colonne già
-            // presenti nel profilo (Year|Summary|Clay|Hard|Indoors|Grass|Not set).
-            const SURFACE_COL = { clay:2, hard:3, 'indoor hard':4, grass:5 };
-            let seasonShare = seasonAggShare;
-            if (surface && SURFACE_COL[surface] != null) {
-                const col = SURFACE_COL[surface];
-                const sfA = a.seasonColumns && pair(a.seasonColumns[col]), sfB = b.seasonColumns && pair(b.seasonColumns[col]);
-                const rfA = rate(sfA), rfB = rate(sfB);
-                const surfaceShare = (rfA != null && rfB != null) ? rfA/(rfA+rfB) : null;
-                if (surfaceShare != null) seasonShare = (seasonAggShare != null) ? 0.5*seasonAggShare + 0.5*surfaceShare : surfaceShare;
-            }
-
-            // Elo ricostruito rigiocando le ultime partite (dalla più vecchia).
-            // Quando conosciamo entrambe le quote storiche di quella partita,
-            // usiamo la probabilità implicita già al netto del margine del
-            // bookmaker come aspettativa - altrimenti un giocatore spesso
-            // favorito in passato (tipicamente i più forti) riceverebbe
-            // sistematicamente meno merito del dovuto per le vittorie da
-            // favorito, confrontate con un'aspettativa gonfiata dal margine.
-            // Con solo la quota nostra nota, si usa quella da sola; senza
-            // nessuna delle due si torna al fallback avversario-medio.
-            const eloFromRecent = recent => {
-                if (!recent || !recent.length) return { elo:null, n:0 };
-                let elo = 1500;
-                [...recent].reverse().forEach(m => {
-                    let expected;
-                    if (m.ownOdds > 1.01 && m.oppOdds > 1.01) {
-                        expected = (1/m.ownOdds) / (1/m.ownOdds + 1/m.oppOdds);
-                    } else if (m.ownOdds > 1.01) {
-                        expected = 1/m.ownOdds;
-                    } else {
-                        expected = 1/(1+Math.pow(10,(1500-elo)/400));
-                    }
-                    elo += 20 * ((m.won?1:0) - expected);
-                });
-                return { elo, n: recent.length };
-            };
-            const eA = eloFromRecent(a.recent), eB = eloFromRecent(b.recent);
-            const eloShare = (eA.elo != null && eB.elo != null) ? 1/(1+Math.pow(10,(eB.elo-eA.elo)/400)) : null;
-            const nMatchesMin = Math.min(eA.n, eB.n);
-
-            // Combinazione in log-odds: il modo statisticamente corretto di
-            // sommare fonti indipendenti (come nell'aggiornamento bayesiano).
-            // Non è "più prudente" di una media lineare - anzi può essere più
-            // decisa se le componenti concordano; la prudenza sui dati scarsi
-            // arriva dopo, con il restringimento in stile Glicko più sotto.
-            const clamp = p => Math.max(0.02, Math.min(0.98, p));
-            const logit = p => Math.log(p/(1-p));
-            const sigmoid = x => 1/(1+Math.exp(-x));
-            const parts = [[0.45,seasonShare],[0.25,rankShare],[0.30,eloShare]].filter(([,v])=>v!=null);
-            if (!parts.length) return { prob:null, reason:'Dati insufficienti (ranking, bilancio stagionale o storico recente mancanti).' };
-            const totalW = parts.reduce((s,[w])=>s+w,0);
-            const avgLogit = parts.reduce((s,[w,v])=>s+w*logit(clamp(v)),0)/totalW;
-            let prob = sigmoid(avgLogit);
-
-            // Correttivo sui precedenti diretti, se lo storico recente di A
-            // include scontri con B (max ±5 punti percentuali).
-            let h2hNote = '';
-            if (a.recent && bName) {
-                const scontri = a.recent.filter(m => m.opponent === bName);
-                if (scontri.length) {
-                    const vittorie = scontri.filter(m => m.won).length;
-                    const bonus = Math.max(-0.05, Math.min(0.05, (vittorie - (scontri.length - vittorie)) * 0.02));
-                    prob += bonus;
-                    h2hNote = ' Precedenti diretti ' + vittorie + '-' + (scontri.length - vittorie) + ' inclusi.';
-                }
-            }
-            prob = Math.max(0.02, Math.min(0.98, prob));
-
-            // Incertezza in stile Glicko (semplificata): pochi dati recenti
-            // usati nell'Elo -> la stima viene tirata verso il 50%, così non
-            // ci fidiamo di un margine "vistoso" costruito su 1-2 partite.
-            const rd = Math.max(50, 350/Math.sqrt(1 + nMatchesMin/1.5));
-            const confidence = Math.max(0, Math.min(1, 1 - (rd-50)/300));
-            prob = 0.5 + (prob-0.5)*confidence;
-
-            const surfNote = surface ? (' Superficie (' + surface + ') inclusa al 50%.') : '';
-            const base = parts.length < 3
-                ? 'Stima parziale: manca ' + (3-parts.length) + ' componente su 3 (stagione/ranking/Elo dalle ultime partite).'
-                : 'Stima su bilancio stagionale, ranking ed Elo dalle ultime partite (quote storiche come aspettativa quando note; confidenza ' + (confidence*100).toFixed(0) + '% in base ai dati recenti disponibili).';
-            return { prob, componentsUsed:parts.length, confidence, reason: base + surfNote + h2hNote };
+        // --- Segnale: movimento quota (apertura -> attuale) ------------------
+        // Niente pi\u00f9 modello statistico nostro da confrontare col book: il
+        // segnale segue direttamente il mercato. Se la quota di un lato si
+        // accorcia abbastanza (soglia diversa per Challenger, dove il
+        // vantaggio misurato nel backtest era pi\u00f9 debole), lo segnaliamo come
+        // PUNTA su quel lato. Parametri congelati dal backtest su
+        // Valuebetennis (vedi LEGGIMI): non modificarli senza un nuovo test.
+        function isChallenger(tournament) {
+            return /challenger/i.test(tournament || '');
         }
 
+        function stakeBand(tournament, absMovePct) {
+            const bands = isChallenger(tournament)
+                ? [[8, 10, 0.02], [10, 14, 0.03], [14, Infinity, 0.04]]
+                : [[5, 8, 0.02], [8, 12, 0.03], [12, Infinity, 0.04]];
+            const b = bands.find(([lo, hi]) => absMovePct >= lo && absMovePct < hi);
+            return (b || bands[bands.length - 1])[2];
+        }
+
+        function computeSignal(item) {
+            const mv = item.movement;
+            if (!mv || !Array.isArray(mv.movePct) || !Array.isArray(mv.currentOdds)) {
+                return { action: 'DATI INSUFFICIENTI', reason: 'Movimento quota non disponibile per questa partita.' };
+            }
+            const threshold = isChallenger(item.tournament) ? 8 : 5;
+            const oddsLo = 1.50, oddsHi = 3.50;
+            let bestSide = null, bestMove = 0;
+            for (let i = 0; i < 2; i++) {
+                const m = mv.movePct[i], o = mv.currentOdds[i];
+                if (m != null && m <= -threshold && o >= oddsLo && o <= oddsHi && m < bestMove) {
+                    bestMove = m; bestSide = i;
+                }
+            }
+            if (bestSide == null) {
+                const names = [item.p1, item.p2];
+                const parts = mv.movePct.map((m, i) => m == null ? null : `${names[i]} ${m >= 0 ? '+' : ''}${m.toFixed(1)}%`).filter(Boolean);
+                return { action: 'FUORI SOGLIA', reason: `Soglia ${threshold}% non superata (${parts.join(' · ') || 'nessun movimento'}).` };
+            }
+            const stakePct = stakeBand(item.tournament, Math.abs(bestMove));
+            return {
+                action: 'PUNTA', side: bestSide,
+                name: bestSide === 0 ? item.p1 : item.p2,
+                odds: mv.currentOdds[bestSide], openOdds: mv.openOdds[bestSide],
+                movePct: bestMove, stakePct, threshold,
+            };
+        }
+
+        function calculateStakeForSignal(stakePct) {
+            const current = getCurrentBankroll();
+            const peak = appData.peakBankroll || current;
+            const riskFactor = (peak > 0 && current / peak < 0.8) ? 0.5 : 1;
+            return +(current * stakePct * riskFactor).toFixed(2);
+        }
+
+        // Rimasto qui sotto solo per compatibilit\u00e0: funzione disattivata, non
+        // pi\u00f9 chiamata da nessuna parte dell'app (la stima statistica \u00e8 stata
+        // sostituita dal segnale sul movimento quota qui sopra).
         async function fetchLiveMatches() {
             if(loadingMatches) return;
             loadingMatches = true;
             const btn = document.querySelector('button[onclick="fetchLiveMatches()"]');
             btn.disabled = true; btn.innerText = 'Caricamento partite...';
             try {
+                // /api/schedule fa gi\u00e0 tutto il lavoro pesante: legge il
+                // palinsesto E aggiorna il movimento quota in KV (apertura la
+                // prima volta che vede una partita, attuale ogni volta dopo).
+                // Qui restano solo lettura e calcolo del segnale.
                 const response = await fetch('/api/schedule', {cache:'no-store'});
                 if(!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('Funzioni Cloudflare non pubblicate: /api/schedule non restituisce JSON.');
                 const data = await response.json();
                 if(!response.ok || data.error) throw new Error(data.error || 'Fonte non disponibile');
-                appData.palinsesto = data.matches.map(m => ({
-                    id: String(m.id), tournament:m.tournament, tournamentUrl:m.tournamentUrl,
-                    commenceTime:new Date(m.startsAt).toLocaleTimeString('it-IT',{timeZone:'Europe/Rome',hour:'2-digit',minute:'2-digit'}),
-                    startsAt:m.startsAt, p1:m.p1, p2:m.p2, match:m.p1+' vs '+m.p2, market:'Statistiche in caricamento',
-                    oddsPair:m.odds, odds:m.odds[0], fairOdds:null, prob:null, action:'DATI INSUFFICIENTI',stake:null, profiles:m.profiles
-                }));
-                document.getElementById('data-status').textContent = 'Fonte: TennisExplorer · Recuperato '+new Date(data.updated).toLocaleString('it-IT')+' · Quote indicative, non quote BANCA Betfair.';
-                saveData();
-
-                // La superficie è per torneo, non per partita: la richiediamo
-                // una sola volta per ogni torneo e la riusiamo per tutte le
-                // sue partite (sperimentale, vedi /api/surface).
-                const surfaceCache = {};
-                async function getSurface(tournamentUrl) {
-                    if (!tournamentUrl) return null;
-                    if (tournamentUrl in surfaceCache) return surfaceCache[tournamentUrl];
-                    try {
-                        const r = await fetch('/api/surface?path=' + encodeURIComponent(tournamentUrl));
-                        const d = await r.json();
-                        surfaceCache[tournamentUrl] = d.surface || null;
-                    } catch { surfaceCache[tournamentUrl] = null; }
-                    return surfaceCache[tournamentUrl];
-                }
-
-                const queue=[...appData.palinsesto];
-                await Promise.all(Array.from({length:2},async()=>{
-                    while(queue.length){const item=queue.shift();
-                        const labels=[item.p1,item.p2];
-                        const [stats, surface, matchOdds] = await Promise.all([
-                            Promise.all(item.profiles.map(async(path,i)=>{
-                                try{const r=await fetch('/api/profile?path='+encodeURIComponent(path)+'&label='+encodeURIComponent(labels[i]));if(!r.ok)return null;return await r.json();}catch{return null;}
-                            })),
-                            getSurface(item.tournamentUrl),
-                            (async()=>{ try{const r=await fetch('/api/match-odds?id='+encodeURIComponent(item.id)); return await r.json();}catch{return null;} })()
-                        ]);
-                        item.stats=stats;
-                        item.surface=surface;
-
-                        // Se la pagina di dettaglio ci dà una media multi-bookmaker
-                        // valida (sperimentale), la preferiamo alla singola quota
-                        // presa a caso dal palinsesto - ma solo se è ragionevolmente
-                        // vicina a quella quota (entro il 10% per lato): il parser di
-                        // quella pagina non è ancora affidabile al 100% (può ancora
-                        // mischiare dentro qualche riga di un mercato diverso), quindi
-                        // se la media diverge troppo dalla fonte già collaudata,
-                        // scartiamo la media invece di rischiare un numero sbagliato.
-                        let oddsPair = item.oddsPair;
-                        item.oddsRejected = false;
-                        if (matchOdds && matchOdds.avgOdds && matchOdds.avgOdds.every(o=>o>1)) {
-                            const ref = item.oddsPair;
-                            const closeEnough = ref && ref.length===2 && ref.every(o=>o>0) &&
-                                Math.abs(matchOdds.avgOdds[0]-ref[0])/ref[0] < 0.10 &&
-                                Math.abs(matchOdds.avgOdds[1]-ref[1])/ref[1] < 0.10;
-                            if (closeEnough) {
-                                oddsPair = matchOdds.avgOdds;
-                                item.oddsSource = 'media di ' + matchOdds.bookmakerCount + ' bookmaker';
-                                item.openOdds = matchOdds.openOdds || null;
-                            } else {
-                                item.oddsRejected = true;
-                                item.oddsSource = 'singolo bookmaker (media scartata: troppo diversa dal palinsesto)';
-                                item.openOdds = null;
-                            }
-                        } else {
-                            item.oddsSource = 'singolo bookmaker (palinsesto)';
-                            item.openOdds = null;
-                        }
-
-                        if(stats.every(Boolean) && oddsPair && oddsPair.length===2 && oddsPair.every(o=>o>0)){
-                            const fav1 = oddsPair[0] <= oddsPair[1];
-                            const favOdds = fav1 ? oddsPair[0] : oddsPair[1];
-                            const dogOdds = fav1 ? oddsPair[1] : oddsPair[0];
-                            const favStats = fav1 ? stats[0] : stats[1], dogStats = fav1 ? stats[1] : stats[0];
-                            const favName = fav1 ? item.p1 : item.p2;
-                            const dogName = fav1 ? item.p2 : item.p1;
-                            const est = estimateProbabilityClient(favStats, dogStats, favName, dogName, surface);
-                            if (est.prob == null) {
-                                item.market = 'Analisi non disponibile: ' + est.reason;
-                                item.prob = null; item.action = 'DATI INSUFFICIENTI';
-                            } else if (favOdds < 1.50 || favOdds > 2.80) {
-                                item.market = 'Fuori range quota (1,50–2,80): quota favorita ' + favOdds.toFixed(2);
-                                item.prob = null; item.action = 'FUORI RANGE';
-                            } else {
-                                const probPct = +(est.prob*100).toFixed(1);
-                                // Il margine del bookmaker (overround) va tolto prima del
-                                // confronto: le due probabilità implicite grezze sommano
-                                // sempre più di 100% (è cosi che il book guadagna), e
-                                // confrontare il modello contro quel Book% gonfiato
-                                // sbilancia il segnale sempre verso "la favorita è
-                                // sopravvalutata" (BANCA), a prescindere da cosa dica
-                                // davvero il modello. Qui normalizziamo le due probabilità
-                                // implicite in modo che sommino esattamente a 100%.
-                                const rawFav = 1/favOdds, rawDog = 1/dogOdds;
-                                const overround = rawFav + rawDog;
-                                const implied = 100 * rawFav / overround;
-                                const edge = probPct - implied;
-                                item.prob = probPct;
-                                item.fairOdds = +(100/probPct).toFixed(2);
-                                item.odds = favOdds;
-                                item.action = edge >= 3 ? 'PUNTA' : (-edge) >= 3 ? 'BANCA' : 'FUORI SOGLIA';
-                                item.puntaName = favName;
-                                item.margin = edge;
-                                item.bookProb = +implied.toFixed(1);
-                                item.componentsUsed = est.componentsUsed;
-                                item.confidence = est.confidence;
-                                const plan = item.action !== 'FUORI SOGLIA' ? calculateStakePlan(favOdds, probPct, item.action === 'BANCA' ? 'banca' : 'punta') : null;
-                                item.stake = plan ? plan.stake : null;
-                                item.liability = plan ? plan.liability : null;
-                                item.market = favName + ' · modello ' + probPct + '% vs book ' + implied.toFixed(1) + '% · margine ' + (edge>=0?'+':'') + edge.toFixed(1) + ' punti · quote: ' + item.oddsSource + ' · ' + est.reason;
-                            }
-                        } else {
-                            item.market = stats.every(Boolean) ? 'Quote non disponibili per questo match' : 'Fonte statistica non disponibile';
-                        }
-                        renderPalinsesto();
+                appData.palinsesto = data.matches.map(m => {
+                    const item = {
+                        id: String(m.id), tournament:m.tournament, tournamentUrl:m.tournamentUrl,
+                        commenceTime:new Date(m.startsAt).toLocaleTimeString('it-IT',{timeZone:'Europe/Rome',hour:'2-digit',minute:'2-digit'}),
+                        startsAt:m.startsAt, p1:m.p1, p2:m.p2, match:m.p1+' vs '+m.p2,
+                        movement:m.movement,
+                    };
+                    const sig = computeSignal(item);
+                    item.action = sig.action;
+                    item.reason = sig.reason || null;
+                    if (sig.action === 'PUNTA') {
+                        item.signalName = sig.name;
+                        item.signalOdds = sig.odds;
+                        item.openOdds = sig.openOdds;
+                        item.movePct = sig.movePct;
+                        item.stakePct = sig.stakePct;
+                        item.stake = calculateStakeForSignal(sig.stakePct);
+                        item.market = 'PUNTA ' + sig.name + ' · quota @' + sig.openOdds.toFixed(2) + ' → @' + sig.odds.toFixed(2) + ' (' + sig.movePct.toFixed(1) + '%)';
                     }
-                }));
+                    return item;
+                });
+                document.getElementById('data-status').textContent = 'Fonte: TennisExplorer · Recuperato '+new Date(data.updated).toLocaleString('it-IT')+' · Quote indicative, non quote Betfair eseguibili.';
                 saveData();
             } catch(e) {
                 appData.palinsesto=[];
@@ -544,31 +476,6 @@
             const current = appData.initialBankroll + profitLoss;
             if (!appData.peakBankroll || current > appData.peakBankroll) appData.peakBankroll = current;
             return current;
-        }
-
-        // Piano di crescita: Kelly frazionato al 50% come prima, ma con un tetto
-        // per giocata (5% della cassa attuale) e un de-risking automatico se si
-        // scende sotto l'80% del picco storico di cassa - si rischia meno quando
-        // le cose vanno peggio, mai di più (nessun recupero delle perdite).
-        // side='punta': prob/odds della selezione che si punta (rischio = stake).
-        // side='banca': prob/odds della selezione che si banca (rischio = liability).
-        function calculateStakePlan(odds, prob, side) {
-            const current = getCurrentBankroll();
-            const peak = appData.peakBankroll || current;
-            const riskFactor = (peak > 0 && current / peak < 0.8) ? 0.5 : 1;
-            const cap = current * 0.05 * riskFactor;
-            const b = odds - 1, p = prob / 100, q = 1 - p;
-            let kellyFull, risk;
-            if (side === 'banca') {
-                kellyFull = q - p * b;
-                risk = current * Math.max(0, kellyFull) * 0.5;
-                risk = Math.min(risk, cap);
-                return { stake: +(risk / b).toFixed(2), liability: +risk.toFixed(2) };
-            }
-            kellyFull = (p * b - q) / b;
-            risk = current * Math.max(0, kellyFull) * 0.5;
-            risk = Math.min(risk, cap);
-            return { stake: +risk.toFixed(2), liability: null };
         }
 
         function filterPalinsesto() {
@@ -590,6 +497,18 @@
         function updateModalAmountLabel() {
             const side = document.getElementById('modal-side').value;
             document.getElementById('modal-amount-label').innerText = side === 'banca' ? 'Liability (€)' : 'Stake (€)';
+            checkModalStakeWarning();
+        }
+
+        function checkModalStakeWarning() {
+            const val = parseFloat(document.getElementById('modal-stake').value);
+            const warn = document.getElementById('modal-stake-warning');
+            if (!isNaN(val) && val > 0 && val < 1) {
+                warn.textContent = 'Il calcolo indica €' + val.toFixed(2) + ', sotto il minimo Betfair di €1 — arrotonda a mano o aspetta che la cassa cresca.';
+                warn.classList.remove('hidden');
+            } else {
+                warn.classList.add('hidden');
+            }
         }
 
         function openManualBetModal(prefill = null) {
@@ -599,15 +518,17 @@
                 document.getElementById('modal-title').innerText = `Registra Giocata (${prefill.action})`;
                 document.getElementById('modal-match').value = prefill.match || '';
                 document.getElementById('modal-market').value = prefill.market || '';
-                document.getElementById('modal-side').value = prefill.action === 'BANCA' ? 'banca' : 'punta';
-                document.getElementById('modal-odds').value = prefill.odds || '';
-                document.getElementById('modal-stake').value = (prefill.action === 'BANCA' ? prefill.liability : prefill.stake) || '';
+                document.getElementById('modal-side').value = 'punta';
+                document.getElementById('modal-signal-odds').value = prefill.signalOdds ? ('@' + prefill.signalOdds) : '';
+                document.getElementById('modal-odds').value = prefill.signalOdds || '';
+                document.getElementById('modal-stake').value = prefill.stake || '';
                 document.getElementById('modal-status').value = 'pending';
                 document.getElementById('modal-bet-id').value = '';
             } else {
                 document.getElementById('modal-title').innerText = "Aggiungi Scommessa Manuale";
                 document.getElementById('modal-bet-form').reset();
                 document.getElementById('modal-side').value = 'punta';
+                document.getElementById('modal-signal-odds').value = '';
                 document.getElementById('modal-bet-id').value = '';
             }
             updateModalAmountLabel();
@@ -621,12 +542,16 @@
         function saveModalBet(e) {
             e.preventDefault();
             const id = document.getElementById('modal-bet-id').value;
+            // modal-signal-odds mostra "@1.80" (solo informativo, da dove e'
+            // partito il segnale) - qui estraiamo solo il numero se presente.
+            const signalOddsRaw = document.getElementById('modal-signal-odds').value.replace('@', '').trim();
             const betData = {
                 id: id ? parseInt(id) : Date.now(),
                 date: new Date().toISOString().split('T')[0],
                 match: document.getElementById('modal-match').value,
                 market: document.getElementById('modal-market').value,
                 side: document.getElementById('modal-side').value,
+                signalOdds: signalOddsRaw ? parseFloat(signalOddsRaw) : null,
                 odds: parseFloat(document.getElementById('modal-odds').value),
                 stake: parseFloat(document.getElementById('modal-stake').value),
                 status: document.getElementById('modal-status').value
@@ -659,6 +584,7 @@
             document.getElementById('modal-match').value = bet.match;
             document.getElementById('modal-market').value = bet.market;
             document.getElementById('modal-side').value = bet.side === 'banca' ? 'banca' : 'punta';
+            document.getElementById('modal-signal-odds').value = bet.signalOdds ? ('@' + bet.signalOdds) : '';
             document.getElementById('modal-odds').value = bet.odds;
             document.getElementById('modal-stake').value = bet.stake;
             document.getElementById('modal-status').value = bet.status;
@@ -711,6 +637,7 @@
             renderPalinsesto();
             renderBets();
             renderCharts();
+            renderGoals();
         }
 
         function renderHeaderAndDashboard() {
@@ -758,7 +685,6 @@
             // colpo d'occhio senza dover leggere ogni cella.
             const STYLE = {
                 PUNTA:   { row:'border-l-4 border-emerald-500 bg-emerald-500/5', badge:'bg-emerald-500 text-slate-950', label:'🟢 PUNTA' },
-                BANCA:   { row:'border-l-4 border-amber-500 bg-amber-500/5',     badge:'bg-amber-500 text-slate-950',  label:'🟠 BANCA' },
                 'FUORI SOGLIA': { row:'border-l-4 border-slate-600', badge:'bg-slate-600 text-slate-100', label:'⚪ Fuori soglia' },
                 DEFAULT: { row:'border-l-4 border-dark-700 opacity-60', badge:'bg-dark-700 text-slate-400', label:null }
             };
@@ -767,21 +693,25 @@
                 const st = STYLE[item.action] || STYLE.DEFAULT;
                 const badge = st.label
                     ? `<span class="${st.badge} font-extrabold px-3 py-1.5 rounded-lg text-xs shadow-md inline-flex items-center gap-1">${st.label}</span>`
-                    : `<span class="text-slate-500 text-xs">${item.action === 'FUORI RANGE' ? 'Fuori range' : 'N/D'}</span>`;
+                    : `<span class="text-slate-500 text-xs" title="${escapeHTML(item.reason || '')}">N/D</span>`;
 
-                // Chip compatti modello/book/margine al posto della frase lunga;
-                // il dettaglio completo resta nel title (tooltip al passaggio).
-                const stats = item.prob != null
-                    ? `<div class="flex gap-1.5 mt-1 flex-wrap" title="${escapeHTML(item.market)}">
-                         <span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-700 text-slate-300">Mod ${item.prob}%</span>
-                         <span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-700 text-slate-400">Book ${item.bookProb}%</span>
-                         <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${item.margin>=3?'bg-emerald-500/20 text-emerald-400':item.margin<=-3?'bg-amber-500/20 text-amber-400':'bg-dark-700 text-slate-400'}">${item.margin>=0?'+':''}${item.margin.toFixed(1)}pt</span>
-                       </div>`
-                    : `<div class="text-[11px] text-slate-500 mt-0.5">${escapeHTML(item.market)}</div>`;
+                // Apertura -> attuale per entrambi i lati, con una freccia che
+                // indica la direzione (accorciata = verde, allungata = grigia).
+                const oddsCell = (item.movement && item.movement.openOdds && item.movement.currentOdds)
+                    ? [0,1].map(i => {
+                        const o = item.movement.openOdds[i], c = item.movement.currentOdds[i];
+                        const m = item.movement.movePct[i];
+                        const name = i === 0 ? item.p1 : item.p2;
+                        const arrow = m == null ? '' : (m < 0 ? '<span class="text-emerald-400">↓</span>' : m > 0 ? '<span class="text-slate-500">↑</span>' : '');
+                        return `<div class="text-xs"><span class="text-slate-400">${escapeHTML(name)}:</span> @${o?.toFixed(2)} → @${c?.toFixed(2)} ${arrow}</div>`;
+                      }).join('')
+                    : '<span class="text-slate-500 text-xs">—</span>';
 
-                const stakeCell = item.action === 'BANCA'
-                    ? (item.liability != null ? `<span class="text-amber-400">Liab. €${item.liability}</span>` : '—')
-                    : (item.stake != null ? `<span class="text-emerald-400">€${item.stake}</span>` : '—');
+                const moveCell = (item.action === 'PUNTA')
+                    ? `<span class="font-bold text-emerald-400">${item.movePct.toFixed(1)}%</span><div class="text-[10px] text-slate-400">${escapeHTML(item.signalName)}</div>`
+                    : `<span class="text-slate-500 text-xs" title="${escapeHTML(item.reason || '')}">${item.reason ? 'sotto soglia' : '—'}</span>`;
+
+                const stakeCell = item.stake != null ? `<span class="text-emerald-400">€${item.stake}</span>` : '—';
 
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-dark-700/40 transition-colors " + st.row;
@@ -792,14 +722,13 @@
                     </td>
                     <td class="p-3">
                         <span class="font-bold text-white block">${escapeHTML(item.match)}</span>
-                        ${stats}
                     </td>
-                    <td class="p-3 font-semibold text-slate-200">@${item.odds ? parseFloat(item.odds).toFixed(2) : "—"}</td>
-                    <td class="p-3 text-cyan-400 font-semibold">@${item.fairOdds ?? "—"}</td>
+                    <td class="p-3">${oddsCell}</td>
+                    <td class="p-3">${moveCell}</td>
                     <td class="p-3">${badge}</td>
                     <td class="p-3 font-bold">${stakeCell}</td>
                     <td class="p-3 text-right space-x-2">
-                        <button ${item.prob == null ? 'disabled title="Analisi non disponibile"' : ''} onclick="betFromPalinsesto('${item.id}')" class="bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 px-2.5 py-1 rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed">Registra</button>
+                        <button ${item.action !== 'PUNTA' ? 'disabled title="Nessun segnale su questa partita"' : ''} onclick="betFromPalinsesto('${item.id}')" class="bg-brand-500/20 text-brand-400 hover:bg-brand-500/30 px-2.5 py-1 rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed">Registra</button>
                         <button onclick="deletePalinsestoItem('${item.id}')" class="text-red-400 hover:underline text-xs">Elimina</button>
                     </td>
                 `;
