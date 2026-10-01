@@ -26,10 +26,13 @@ export async function onRequestGet({env}){
    return json({error:'Segreti Betfair non impostati su Cloudflare (BETFAIR_APP_KEY, BETFAIR_USERNAME, BETFAIR_PASSWORD).'},500);
   }
   const debug=await betfairLoginDebug(appKey,username,password);
-  if(!debug.parsed||!debug.parsed.sessionToken){
+  // Mai esporre il contenuto vero dei segreti: solo quante lettere ha ognuno,
+  // per capire se uno dei tre e' arrivato vuoto o troncato.
+  debug.lengths={appKey:appKey.length,username:username.length,password:password.length};
+  if(!debug.parsed||!debug.parsed.token){
    return json({step:'login',debug});
   }
-  const sessionToken=debug.parsed.sessionToken;
+  const sessionToken=debug.parsed.token;
   const markets=await betfairListTennisMatches(appKey,sessionToken);
   const marketIds=markets.map(m=>m.marketId);
   const books=await betfairMarketBook(appKey,sessionToken,marketIds);

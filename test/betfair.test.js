@@ -13,7 +13,8 @@ function mockFetchSequence(responses){
 }
 
 test('betfairLogin returns the session token on success', async () => {
-  const restore = mockFetchSequence([{ body: { sessionToken: 'abc123', loginStatus: 'SUCCESS' } }]);
+  // Formato reale del login interattivo: {token, product, status, error}.
+  const restore = mockFetchSequence([{ body: { token: 'abc123', product: 'key', status: 'SUCCESS' } }]);
   try {
     const token = await betfairLogin('key', 'user', 'pass');
     assert.equal(token, 'abc123');
@@ -21,7 +22,7 @@ test('betfairLogin returns the session token on success', async () => {
 });
 
 test('betfairLogin throws a clear error when credentials are wrong', async () => {
-  const restore = mockFetchSequence([{ body: { loginStatus: 'INVALID_USERNAME_OR_PASSWORD' } }]);
+  const restore = mockFetchSequence([{ body: { token: '', product: 'key', status: 'FAIL', error: 'INVALID_USERNAME_OR_PASSWORD' } }]);
   try {
     await assert.rejects(() => betfairLogin('key', 'user', 'wrong'), /INVALID_USERNAME_OR_PASSWORD/);
   } finally { restore(); }
