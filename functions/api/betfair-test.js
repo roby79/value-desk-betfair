@@ -1,4 +1,19 @@
-import {betfairLogin,betfairListTennisMatches,betfairMarketBook,json} from '../../lib/source.js';
+import {json,betfairListTennisMatches,betfairMarketBook} from '../../lib/source.js';
+
+// Versione diagnostica temporanea del login: non usa betfairLogin() da
+// lib/source.js, chiama direttamente l'endpoint e restituisce la risposta
+// grezza cosi' vediamo esattamente cosa torna invece di indovinare.
+async function betfairLoginDebug(appKey,username,password){
+ const r=await fetch('https://identitysso.betfair.it/api/login',{
+  method:'POST',
+  headers:{'X-Application':appKey,'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},
+  body:`username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
+ });
+ const text=await r.text();
+ let parsed=null;
+ try{parsed=JSON.parse(text);}catch{/* non era JSON */}
+ return {httpStatus:r.status,contentType:r.headers.get('content-type'),rawBody:text.slice(0,500),parsed};
+}
 
 // Endpoint di SOLO TEST: verifica che login + lettura mercati Betfair
 // funzionino con dati veri, prima di collegarli alla pipeline del
@@ -10,7 +25,11 @@ export async function onRequestGet({env}){
   if(!appKey||!username||!password){
    return json({error:'Segreti Betfair non impostati su Cloudflare (BETFAIR_APP_KEY, BETFAIR_USERNAME, BETFAIR_PASSWORD).'},500);
   }
-  const sessionToken=await betfairLogin(appKey,username,password);
+  const debug=await betfairLoginDebug(appKey,username,password);
+  if(!debug.parsed||!debug.parsed.sessionToken){
+   return json({step:'login',debug});
+  }
+  const sessionToken=debug.parsed.sessionToken;
   const markets=await betfairListTennisMatches(appKey,sessionToken);
   const marketIds=markets.map(m=>m.marketId);
   const books=await betfairMarketBook(appKey,sessionToken,marketIds);
