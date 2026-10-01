@@ -29,6 +29,10 @@ export async function onRequestGet({env}){
   // Mai esporre il contenuto vero dei segreti: solo quante lettere ha ognuno,
   // per capire se uno dei tre e' arrivato vuoto o troncato.
   debug.lengths={appKey:appKey.length,username:username.length,password:password.length};
+  // Controllo molto comune: uno spazio o un "a capo" rimasto attaccato
+  // incollando il valore nel campo di Cloudflare. Non mostra il contenuto,
+  // solo se la lunghezza cambia togliendo gli spazi ai bordi.
+  debug.trimmedLengths={username:username.trim().length,password:password.trim().length};
   if(!debug.parsed||!debug.parsed.token){
    return json({step:'login',debug});
   }
