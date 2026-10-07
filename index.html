@@ -104,11 +104,11 @@
             <div class="bg-dark-800 p-6 rounded-2xl border border-dark-700 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                     <h2 class="text-xl font-bold text-white flex items-center gap-2"><span>🎯</span> Palinsesto Partite Reali & Analisi Automatica</h2>
-                    <p class="text-xs text-slate-400 mt-1">Carica le quote e i match reali in corso/programma con calcolo istantaneo Punta/Banca.</p>
+                    <p class="text-xs text-slate-400 mt-1">Quote Betfair.it aggiornate ogni 15 minuti: PUNTA quando la quota di un giocatore si accorcia oltre la soglia.</p>
                 </div>
                 <div class="flex items-center gap-3 w-full md:w-auto">
                     <input type="text" id="search-filter" placeholder="Cerca tennista o torneo..." oninput="filterPalinsesto()" class="bg-dark-900 border border-dark-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500 w-full md:w-64">
-                    <button onclick="fetchLiveMatches()" class="bg-brand-500 hover:bg-brand-600 text-dark-900 font-bold py-2 px-4 rounded-xl transition-all shadow-md shadow-brand-500/20 whitespace-nowrap text-sm">🔄 Aggiorna Match Reali</button>
+                    <button onclick="fetchLiveMatches()" class="bg-brand-500 hover:bg-brand-600 text-dark-900 font-bold py-2 px-4 rounded-xl transition-all shadow-md shadow-brand-500/20 whitespace-nowrap text-sm">🔄 Aggiorna</button>
                 </div>
             </div>
 
@@ -420,26 +420,21 @@
             return +(current * stakePct * riskFactor).toFixed(2);
         }
 
-        // Rimasto qui sotto solo per compatibilit\u00e0: funzione disattivata, non
-        // pi\u00f9 chiamata da nessuna parte dell'app (la stima statistica \u00e8 stata
-        // sostituita dal segnale sul movimento quota qui sopra).
+        // Legge le partite e il movimento quota da Betfair.it (dati scritti
+        // ogni 15 minuti in KV dal container sul VPS, letti da /api/betfair).
         async function fetchLiveMatches() {
             if(loadingMatches) return;
             loadingMatches = true;
             const btn = document.querySelector('button[onclick="fetchLiveMatches()"]');
             btn.disabled = true; btn.innerText = 'Caricamento partite...';
             try {
-                // /api/schedule fa gi\u00e0 tutto il lavoro pesante: legge il
-                // palinsesto E aggiorna il movimento quota in KV (apertura la
-                // prima volta che vede una partita, attuale ogni volta dopo).
-                // Qui restano solo lettura e calcolo del segnale.
-                const response = await fetch('/api/schedule', {cache:'no-store'});
-                if(!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('Funzioni Cloudflare non pubblicate: /api/schedule non restituisce JSON.');
+                const response = await fetch('/api/betfair', {cache:'no-store'});
+                if(!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('Funzioni Cloudflare non pubblicate: /api/betfair non restituisce JSON.');
                 const data = await response.json();
                 if(!response.ok || data.error) throw new Error(data.error || 'Fonte non disponibile');
                 appData.palinsesto = data.matches.map(m => {
                     const item = {
-                        id: String(m.id), tournament:m.tournament, tournamentUrl:m.tournamentUrl,
+                        id: String(m.id), tournament:m.tournament, tournamentUrl:null,
                         commenceTime:new Date(m.startsAt).toLocaleTimeString('it-IT',{timeZone:'Europe/Rome',hour:'2-digit',minute:'2-digit'}),
                         startsAt:m.startsAt, p1:m.p1, p2:m.p2, match:m.p1+' vs '+m.p2,
                         movement:m.movement,
@@ -458,13 +453,16 @@
                     }
                     return item;
                 });
-                document.getElementById('data-status').textContent = 'Fonte: TennisExplorer · Recuperato '+new Date(data.updated).toLocaleString('it-IT')+' · Quote indicative, non quote Betfair eseguibili.';
+                const upd = data.updated ? new Date(data.updated).toLocaleString('it-IT',{timeZone:'Europe/Rome'}) : 'mai';
+                document.getElementById('data-status').textContent = (data.stale ? '⚠️ DATI VECCHI: il container sul VPS non aggiorna da più di 45 minuti. ' : '')
+                    + 'Fonte: Betfair.it (quota back migliore, App Key con ritardo) · Ultimo aggiornamento '+upd
+                    + ' · Apertura = prima quota con mercato liquido vista dal sistema. Esclusi doppi e ITF.';
                 saveData();
             } catch(e) {
                 appData.palinsesto=[];
                 document.getElementById('data-status').textContent = 'Aggiornamento fallito: '+e.message;
                 renderAll();
-            } finally {loadingMatches=false;btn.disabled=false;btn.innerText='🔄 Aggiorna Match Reali';}
+            } finally {loadingMatches=false;btn.disabled=false;btn.innerText='🔄 Aggiorna';}
         }
 
         function getCurrentBankroll() {
@@ -663,6 +661,18 @@
             document.getElementById('dash-total-bets').innerText = totalBets;
         }
 
+        // Badge colorato del movimento: verde = quota accorciata (il mercato
+        // spinge su quel giocatore), rosso = quota allungata, grigio = ferma.
+        function moveBadge(m) {
+            if (m == null) return '<span class="text-slate-600 text-xs">n/d</span>';
+            const abs = Math.abs(m);
+            if (abs < 0.05) return '<span class="inline-flex items-center gap-1 bg-dark-700 text-slate-400 font-bold px-2 py-0.5 rounded-md text-xs">■ 0,0%</span>';
+            const txt = (m > 0 ? '+' : '−') + abs.toFixed(1).replace('.', ',') + '%';
+            return m < 0
+                ? `<span class="inline-flex items-center gap-1 bg-emerald-500 text-slate-950 font-extrabold px-2 py-0.5 rounded-md text-xs shadow">▼ ${txt}</span>`
+                : `<span class="inline-flex items-center gap-1 bg-red-500/80 text-white font-extrabold px-2 py-0.5 rounded-md text-xs shadow">▲ ${txt}</span>`;
+        }
+
         function escapeHTML(value) { return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         function renderPalinsesto() {
             const tbody = document.getElementById('palinsesto-table-body');
@@ -677,7 +687,7 @@
             document.getElementById('match-count-badge').innerText = `${filtered.length} match`;
 
             if(filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">Nessun match trovato. Clicca su "Aggiorna Match Reali".</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">Nessun match trovato. Clicca su "Aggiorna".</td></tr>`;
                 return;
             }
 
@@ -702,13 +712,12 @@
                         const o = item.movement.openOdds[i], c = item.movement.currentOdds[i];
                         const m = item.movement.movePct[i];
                         const name = i === 0 ? item.p1 : item.p2;
-                        const arrow = m == null ? '' : (m < 0 ? '<span class="text-emerald-400">↓</span>' : m > 0 ? '<span class="text-slate-500">↑</span>' : '');
-                        return `<div class="text-xs"><span class="text-slate-400">${escapeHTML(name)}:</span> @${o?.toFixed(2)} → @${c?.toFixed(2)} ${arrow}</div>`;
+                        return `<div class="text-xs flex items-center gap-2 py-0.5"><span class="text-slate-400 w-28 truncate" title="${escapeHTML(name)}">${escapeHTML(name)}</span><span class="text-slate-300 whitespace-nowrap">@${o?.toFixed(2) ?? '–'} → <b class="text-white">@${c?.toFixed(2) ?? '–'}</b></span>${moveBadge(m)}</div>`;
                       }).join('')
                     : '<span class="text-slate-500 text-xs">—</span>';
 
                 const moveCell = (item.action === 'PUNTA')
-                    ? `<span class="font-bold text-emerald-400">${item.movePct.toFixed(1)}%</span><div class="text-[10px] text-slate-400">${escapeHTML(item.signalName)}</div>`
+                    ? `<span class="inline-block bg-emerald-500 text-slate-950 font-extrabold px-2.5 py-1 rounded-lg text-sm">▼ ${Math.abs(item.movePct).toFixed(1).replace('.', ',')}%</span><div class="text-[10px] text-slate-400 mt-1">${escapeHTML(item.signalName)}</div>`
                     : `<span class="text-slate-500 text-xs" title="${escapeHTML(item.reason || '')}">${item.reason ? 'sotto soglia' : '—'}</span>`;
 
                 const stakeCell = item.stake != null ? `<span class="text-emerald-400">€${item.stake}</span>` : '—';

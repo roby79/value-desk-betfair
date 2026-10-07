@@ -1,73 +1,32 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {betfairLogin, betfairListTennisMatches, betfairMarketBook} from '../lib/source.js';
+import {normalizeBetfair} from '../lib/source.js';
 
-function mockFetchSequence(responses){
-  const original = global.fetch;
-  let i = 0;
-  global.fetch = async (url, opts) => {
-    const r = responses[Math.min(i, responses.length - 1)];
-    i++;
-    return { ok: r.status ? r.status < 300 : true, status: r.status || 200, json: async () => r.body, url, opts };
-  };
-  return () => { global.fetch = original; };
-}
+const now=new Date('2026-10-07T10:00:00Z');
+const mk=(o)=>({marketId:'1.1',event:'A v B',competition:'ATP Shanghai 2026',startTime:'2026-10-07T12:00:00Z',isDoubles:false,
+ runners:[{name:'A',openOdds:2.0,currentOdds:1.8,movePct:-10},{name:'B',openOdds:1.8,currentOdds:2.0,movePct:11.1}],...o});
 
-test('betfairLogin returns the session token on success', async () => {
-  // Formato reale del login interattivo: {token, product, status, error}.
-  const restore = mockFetchSequence([{ body: { token: 'abc123', product: 'key', status: 'SUCCESS' } }]);
-  try {
-    const token = await betfairLogin('key', 'user', 'pass');
-    assert.equal(token, 'abc123');
-  } finally { restore(); }
+test('normalizeBetfair converte una partita nel formato della tabella',()=>{
+ const r=normalizeBetfair({updatedAt:'2026-10-07T09:50:00Z',matches:[mk()]},now);
+ assert.equal(r.stale,false);
+ assert.equal(r.matches.length,1);
+ const m=r.matches[0];
+ assert.equal(m.p1,'A');assert.equal(m.p2,'B');assert.equal(m.tournament,'ATP Shanghai 2026');
+ assert.deepEqual(m.movement.openOdds,[2.0,1.8]);
+ assert.deepEqual(m.movement.currentOdds,[1.8,2.0]);
+ assert.deepEqual(m.movement.movePct,[-10,11.1]);
 });
 
-test('betfairLogin throws a clear error when credentials are wrong', async () => {
-  const restore = mockFetchSequence([{ body: { token: '', product: 'key', status: 'FAIL', error: 'INVALID_USERNAME_OR_PASSWORD' } }]);
-  try {
-    await assert.rejects(() => betfairLogin('key', 'user', 'wrong'), /INVALID_USERNAME_OR_PASSWORD/);
-  } finally { restore(); }
+test('normalizeBetfair esclude doppi, ITF e partite gia iniziate',()=>{
+ const r=normalizeBetfair({updatedAt:'2026-10-07T09:50:00Z',matches:[
+  mk({marketId:'d',event:'A/B v C/D',isDoubles:true}),
+  mk({marketId:'i',competition:'ITF W50 Heraklion GRE'}),
+  mk({marketId:'s',startTime:'2026-10-07T09:00:00Z'}),
+  mk({marketId:'c',competition:'Braga Challenger 2026'}),
+ ]},now);
+ assert.deepEqual(r.matches.map(m=>m.marketId),['c']);
 });
 
-test('betfairLogin throws on a non-OK HTTP response', async () => {
-  const restore = mockFetchSequence([{ status: 503, body: {} }]);
-  try {
-    await assert.rejects(() => betfairLogin('key', 'user', 'pass'), /HTTP 503/);
-  } finally { restore(); }
-});
-
-test('betfairListTennisMatches returns the market list from a successful JSON-RPC call', async () => {
-  const restore = mockFetchSequence([{ body: { result: [
-    { marketId: '1.111', event: { name: 'Djokovic v Alcaraz' }, marketStartTime: '2026-10-02T10:00:00Z',
-      runners: [{ selectionId: 1, runnerName: 'Djokovic N.' }, { selectionId: 2, runnerName: 'Alcaraz C.' }] },
-  ] } }]);
-  try {
-    const markets = await betfairListTennisMatches('key', 'token');
-    assert.equal(markets.length, 1);
-    assert.equal(markets[0].event.name, 'Djokovic v Alcaraz');
-  } finally { restore(); }
-});
-
-test('betfairListTennisMatches surfaces a JSON-RPC error clearly', async () => {
-  const restore = mockFetchSequence([{ body: { error: { message: 'INVALID_SESSION_INFORMATION' } } }]);
-  try {
-    await assert.rejects(() => betfairListTennisMatches('key', 'badtoken'), /INVALID_SESSION_INFORMATION/);
-  } finally { restore(); }
-});
-
-test('betfairMarketBook returns an empty array without hitting the network when there are no market ids', async () => {
-  const restore = mockFetchSequence([{ body: { result: [{ should: 'not be reached' }] } }]);
-  try {
-    const books = await betfairMarketBook('key', 'token', []);
-    assert.deepEqual(books, []);
-  } finally { restore(); }
-});
-
-test('betfairMarketBook returns the book list when market ids are given', async () => {
-  const restore = mockFetchSequence([{ body: { result: [
-    { marketId: '1.111', runners: [{ selectionId: 1, ex: { availableToBack: [{ price: 1.85, size: 120 }] } }] },
-  ] } }]);
-  try {
-    const books = await betfairMarketBook('key', 'token', ['1.111']);
-    assert.equal(books[0].runners[0].ex.availableToBack[0].price, 1.85);
-  } finally { restore(); }
+test('normalizeBetfair segnala dati vecchi o assenti',()=>{
+ assert.equal(normalizeBetfair({updatedAt:'2026-10-07T08:00:00Z',matches:[]},now).stale,true);
+ assert.equal(normalizeBetfair(null,now).stale,true);
 });
